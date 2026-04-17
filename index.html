@@ -1,1733 +1,938 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Porsche Immersive Experience</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Porsche 3D Experience</title>
 <style>
   :root {
-    --red: #e00000;
-    --gold: #c9a84c;
-    --dark: #080808;
-    --darker: #030303;
-    --glass: rgba(255,255,255,0.04);
-    --glass-border: rgba(255,255,255,0.08);
-    --text: #e8e8e8;
-    --muted: #888;
-    --panel-bg: rgba(10,10,12,0.85);
+    --color-primary: #d62728;
+    --color-background: #111;
+    --color-accent: #f44336;
+    --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Rajdhani',sans-serif;}
-  canvas{display:block;touch-action:none;}
-
-  /* LOADING */
-  #loader{position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 1s;}
-  #loader.hidden{opacity:0;pointer-events:none;}
-  .loader-logo{font-family:'Orbitron',sans-serif;font-size:clamp(18px,5vw,36px);letter-spacing:0.3em;color:#fff;text-transform:uppercase;margin-bottom:8px;}
-  .loader-sub{font-size:11px;letter-spacing:0.25em;color:var(--gold);text-transform:uppercase;margin-bottom:50px;}
-  .loader-bar-wrap{width:260px;height:2px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
-  .loader-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--red),var(--gold));transition:width 0.3s;}
-  .loader-status{font-size:10px;letter-spacing:0.2em;color:var(--muted);margin-top:14px;text-transform:uppercase;}
-  .loader-credit{position:absolute;bottom:30px;font-size:10px;letter-spacing:0.2em;color:rgba(255,255,255,0.2);}
-
-  /* TOP BAR */
-  #topbar{position:fixed;top:0;left:0;right:0;height:52px;background:var(--panel-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--glass-border);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:100;}
-  .tb-logo{font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:0.25em;color:#fff;text-transform:uppercase;flex:1;}
-  .tb-logo span{color:var(--red);}
-  .tb-fps{font-size:10px;letter-spacing:0.1em;color:var(--gold);background:rgba(201,168,76,0.1);padding:3px 8px;border-radius:3px;border:1px solid rgba(201,168,76,0.2);}
-  .tb-btn{width:34px;height:34px;background:var(--glass);border:1px solid var(--glass-border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;color:var(--text);font-size:14px;}
-  .tb-btn:hover,.tb-btn.active{background:rgba(224,0,0,0.15);border-color:var(--red);color:var(--red);}
-
-  /* SIDE CONTROLS */
-  #sidecontrols{position:fixed;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:100;}
-  .sc-btn{width:42px;height:42px;background:var(--panel-bg);border:1px solid var(--glass-border);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.25s;color:var(--muted);font-size:10px;flex-direction:column;gap:2px;backdrop-filter:blur(20px);}
-  .sc-btn svg,.sc-btn .icon{font-size:16px;line-height:1;}
-  .sc-btn span{font-size:7px;letter-spacing:0.05em;text-transform:uppercase;}
-  .sc-btn:hover,.sc-btn.active{background:rgba(224,0,0,0.12);border-color:var(--red);color:var(--red);}
-
-  /* BOTTOM CONFIGURATOR */
-  #configurator{position:fixed;bottom:0;left:0;right:0;background:var(--panel-bg);backdrop-filter:blur(20px);border-top:1px solid var(--glass-border);padding:10px 12px 14px;z-index:100;transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);}
-  #configurator.hidden{transform:translateY(100%);}
-  .cfg-tabs{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;scrollbar-width:none;}
-  .cfg-tabs::-webkit-scrollbar{display:none;}
-  .cfg-tab{padding:5px 12px;font-size:9px;letter-spacing:0.15em;text-transform:uppercase;border:1px solid var(--glass-border);border-radius:4px;cursor:pointer;white-space:nowrap;transition:all 0.2s;color:var(--muted);}
-  .cfg-tab.active{background:rgba(224,0,0,0.15);border-color:var(--red);color:var(--red);}
-  .cfg-panel{display:none;}
-  .cfg-panel.active{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
-  .cfg-panel::-webkit-scrollbar{display:none;}
-  .color-swatch{width:32px;height:32px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all 0.2s;flex-shrink:0;}
-  .color-swatch.active,.color-swatch:hover{border-color:#fff;transform:scale(1.15);}
-  .cfg-option{min-width:70px;height:46px;background:var(--glass);border:1px solid var(--glass-border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:3px;transition:all 0.2s;flex-shrink:0;padding:0 8px;}
-  .cfg-option.active,.cfg-option:hover{background:rgba(224,0,0,0.12);border-color:var(--red);}
-  .cfg-option .icon{font-size:14px;}
-  .cfg-option span{font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);}
-  .cfg-option.active span,.cfg-option:hover span{color:var(--red);}
-
-  /* INFO PANEL */
-  #infopanel{position:fixed;left:12px;top:50%;transform:translateY(-50%);width:min(260px,calc(100vw - 60px));background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:12px;padding:16px;z-index:100;transition:all 0.35s cubic-bezier(0.16,1,0.3,1);opacity:0;pointer-events:none;}
-  #infopanel.visible{opacity:1;pointer-events:all;}
-  .ip-close{position:absolute;top:10px;right:10px;width:24px;height:24px;border:1px solid var(--glass-border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--muted);}
-  .ip-close:hover{border-color:var(--red);color:var(--red);}
-  .ip-tag{font-size:8px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;}
-  .ip-name{font-family:'Orbitron',sans-serif;font-size:15px;color:#fff;margin-bottom:10px;line-height:1.2;}
-  .ip-divider{height:1px;background:var(--glass-border);margin:10px 0;}
-  .ip-row{display:flex;justify-content:space-between;margin-bottom:7px;}
-  .ip-label{font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);}
-  .ip-value{font-size:9px;color:var(--text);}
-  .ip-desc{font-size:10px;color:var(--muted);line-height:1.5;margin-top:8px;}
-
-  /* TOAST */
-  #toast{position:fixed;bottom:120px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(224,0,0,0.9);color:#fff;padding:8px 20px;border-radius:20px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;z-index:200;opacity:0;transition:all 0.3s;pointer-events:none;}
-  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-  /* VR OVERLAY */
-  #vroverlay{position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
-  #vroverlay.show{display:flex;}
-  .vr-title{font-family:'Orbitron',sans-serif;font-size:20px;letter-spacing:0.2em;color:#fff;}
-  .vr-msg{font-size:12px;letter-spacing:0.1em;color:var(--muted);text-align:center;max-width:300px;}
-  .vr-close{padding:10px 30px;border:1px solid var(--red);color:var(--red);border-radius:6px;cursor:pointer;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;margin-top:10px;}
-
-  /* SCREENSHOT FLASH */
-  #flash{position:fixed;inset:0;background:#fff;z-index:9997;opacity:0;pointer-events:none;transition:opacity 0.15s;}
-
-  @media(max-width:480px){
-    #sidecontrols{right:6px;}
-    .sc-btn{width:38px;height:38px;}
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-family);
+    background-color: var(--color-background);
+    color: #fff;
+    overflow: hidden;
+    height: 100%;
   }
+
+  /* UI overlays */
+  #loadingScreen {
+    position: absolute;
+    top:0; left:0; right:0; bottom:0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    font-family: var(--font-family);
+  }
+  #loadingBarContainer {
+    width: 80%;
+    height: 10px;
+    background: #222;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+  #loadingBar {
+    width: 0%;
+    height: 100%;
+    background: var(--color-primary);
+  }
+  #loadingText {
+    font-size: 1.2em;
+    margin-top: 10px;
+  }
+
+  /* Cinematic intro overlay */
+  #cinematicOverlay {
+    position: absolute;
+    top:0; left:0; right:0; bottom:0;
+    background: #000;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:#fff;
+    font-size:1.5em;
+    z-index: 900;
+    opacity:1;
+    transition: opacity 1s;
+  }
+  #cinematicOverlay.hidden {
+    opacity:0;
+    pointer-events:none;
+  }
+
+  /* Top bar UI */
+  #topBar {
+    position: absolute;
+    top: 10px; left: 50%; transform: translateX(-50%);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background: rgba(20,20,20,0.7);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: var(--font-family);
+    z-index: 500;
+  }
+  #topBar button {
+    background: transparent;
+    border: 2px solid #444;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor:pointer;
+    font-size:0.9em;
+    transition: background 0.2s;
+  }
+  #topBar button:hover {
+    background: #333;
+  }
+  #fpsCounter {
+    margin-left:10px;
+    font-family: monospace;
+  }
+
+  /* Side controls UI */
+  #sideControls {
+    position: absolute;
+    top:50%;
+    right:10px;
+    transform: translateY(-50%);
+    display:flex;
+    flex-direction: column;
+    gap:8px;
+    background: rgba(20,20,20,0.7);
+    padding:8px;
+    border-radius:8px;
+    z-index:500;
+  }
+  #sideControls button {
+    background: transparent;
+    border: 2px solid #444;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor:pointer;
+    font-size:0.9em;
+    transition: background 0.2s;
+  }
+  #sideControls button:hover {
+    background: #333;
+  }
+
+  /* Bottom configurator panel */
+  #bottomPanel {
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    display:flex;
+    justify-content: center;
+    gap:10px;
+    z-index: 500;
+  }
+  #configButtons {
+    display:flex;
+    gap:10px;
+  }
+  #configButtons button {
+    background: rgba(20,20,20,0.7);
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding:8px 12px;
+    cursor:pointer;
+    font-size:0.9em;
+    transition: background 0.2s;
+  }
+  #configButtons button:hover {
+    background: #333;
+  }
+
+  /* Info panel for component info */
+  #infoPanel {
+    position:absolute;
+    top:70px; left:50%; transform: translateX(-50%);
+    max-width: 80%;
+    background: rgba(20,20,20,0.95);
+    padding: 16px;
+    border-radius:8px;
+    display:none;
+    flex-direction:column;
+    z-index:1000;
+  }
+  #infoPanel h3 {
+    margin:0 0 8px 0;
+    font-size:1.2em;
+  }
+  #infoPanel p {
+    margin:4px 0;
+  }
+  #infoClose {
+    align-self:flex-end;
+    background: transparent;
+    border:none;
+    font-size:1.4em;
+    cursor:pointer;
+    color:#ccc;
+    margin-top:8px;
+  }
+
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-
-<!-- LOADING SCREEN -->
-<div id="loader">
-  <div class="loader-logo">PORSCHE</div>
-  <div class="loader-sub">Immersive Experience</div>
-  <div class="loader-bar-wrap"><div class="loader-bar" id="loaderBar"></div></div>
-  <div class="loader-status" id="loaderStatus">Initializing Engine...</div>
-  <div class="loader-credit">Created by Salonicas 2026</div>
+<!-- Loading screen -->
+<div id="loadingScreen">
+  <div style="font-size:2em;">PORSCHE IMMERSIVE EXPERIENCE</div>
+  <div style="font-size:1.2em;">Created by Salonicas 2026</div>
+  <div id="loadingBarContainer"><div id="loadingBar"></div></div>
 </div>
 
-<!-- TOP BAR -->
-<div id="topbar">
-  <div class="tb-logo">PORSCHE <span>911</span></div>
-  <div class="tb-fps" id="fpsCounter">60 FPS</div>
-  <div class="tb-btn" id="btnAudio" title="Toggle Audio">🔊</div>
-  <div class="tb-btn" id="btnFS" title="Fullscreen">⛶</div>
+<!-- Cinematic intro overlay -->
+<div id="cinematicOverlay">Loading...</div>
+
+<!-- Top UI controls -->
+<div id="topBar">
+  <div>Porsche Experience</div>
+  <button id="fullscreenBtn">Fullscreen</button>
+  <button id="muteBtn">Mute</button>
+  <div id="fpsCounter">FPS: 0</div>
 </div>
 
-<!-- SIDE CONTROLS -->
-<div id="sidecontrols">
-  <div class="sc-btn active" id="btnOrbit" onclick="AppManager.setMode('orbit')"><div class="icon">⟳</div><span>Orbit</span></div>
-  <div class="sc-btn" id="btnCockpit" onclick="AppManager.setMode('cockpit')"><div class="icon">🎯</div><span>Cockpit</span></div>
-  <div class="sc-btn" id="btnDrive" onclick="AppManager.setMode('drive')"><div class="icon">⚡</div><span>Drive</span></div>
-  <div class="sc-btn" id="btnExplode" onclick="AppManager.setMode('explode')"><div class="icon">💥</div><span>Explode</span></div>
-  <div class="sc-btn" id="btnCinema" onclick="CameraManager.startCinematic()"><div class="icon">🎬</div><span>Cinematic</span></div>
-  <div class="sc-btn" id="btnVR" onclick="VRManager.enter()"><div class="icon">🥽</div><span>VR</span></div>
-  <div class="sc-btn" id="btnShot" onclick="AppManager.screenshot()"><div class="icon">📷</div><span>Shot</span></div>
-  <div class="sc-btn" id="btnCfg" onclick="UIManager.toggleConfigurator()"><div class="icon">⚙</div><span>Config</span></div>
+<!-- Side controls -->
+<div id="sideControls">
+  <button id="orbitBtn">Orbit</button>
+  <button id="walkBtn">Walk</button>
+  <button id="cockpitBtn">Cockpit</button>
+  <button id="explodedBtn">Exploded</button>
+  <button id="vrBtn">VR</button>
+  <button id="screenshotBtn">Screenshot</button>
 </div>
 
-<!-- BOTTOM CONFIGURATOR -->
-<div id="configurator">
-  <div class="cfg-tabs">
-    <div class="cfg-tab active" onclick="UIManager.cfgTab('colors',this)">Colors</div>
-    <div class="cfg-tab" onclick="UIManager.cfgTab('wheels',this)">Wheels</div>
-    <div class="cfg-tab" onclick="UIManager.cfgTab('interior',this)">Interior</div>
-    <div class="cfg-tab" onclick="UIManager.cfgTab('env',this)">Environment</div>
-    <div class="cfg-tab" onclick="UIManager.cfgTab('doors',this)">Doors</div>
-    <div class="cfg-tab" onclick="UIManager.cfgTab('lights',this)">Lights</div>
-    <div class="cfg-tab" onclick="UIManager.cfgTab('brakes',this)">Brakes</div>
-  </div>
-  <div class="cfg-panel active" id="panel-colors">
-    <div class="color-swatch active" style="background:#0a0a0a;border-color:rgba(255,255,255,0.3)" onclick="ConfiguratorManager.setColor(0x0a0a0a,'Jet Black',this)"></div>
-    <div class="color-swatch" style="background:#f0f0f0" onclick="ConfiguratorManager.setColor(0xf0f0f0,'Carrara White',this)"></div>
-    <div class="color-swatch" style="background:#c0c0c0" onclick="ConfiguratorManager.setColor(0xc0c0c0,'GT Silver',this)"></div>
-    <div class="color-swatch" style="background:#c0392b" onclick="ConfiguratorManager.setColor(0xc0392b,'Guards Red',this)"></div>
-    <div class="color-swatch" style="background:#f0c000" onclick="ConfiguratorManager.setColor(0xf0c000,'Racing Yellow',this)"></div>
-    <div class="color-swatch" style="background:#1a7ac7" onclick="ConfiguratorManager.setColor(0x1a7ac7,'Miami Blue',this)"></div>
-    <div class="color-swatch" style="background:#1a3a5c" onclick="ConfiguratorManager.setColor(0x1a3a5c,'Night Blue',this)"></div>
-    <div class="color-swatch" style="background:linear-gradient(135deg,#888,#ccc,#888)" onclick="ConfiguratorManager.setColor(0xaaaaaa,'Metallic Silver',this)"></div>
-  </div>
-  <div class="cfg-panel" id="panel-wheels">
-    <div class="cfg-option active" onclick="ConfiguratorManager.setWheels('sport',this)"><div class="icon">🔘</div><span>Sport</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setWheels('track',this)"><div class="icon">⭕</div><span>Track</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setWheels('luxury',this)"><div class="icon">🌀</div><span>Luxury</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setWheels('carbon',this)"><div class="icon">◈</div><span>Carbon</span></div>
-  </div>
-  <div class="cfg-panel" id="panel-interior">
-    <div class="cfg-option active" onclick="ConfiguratorManager.setInterior('black',this)"><div class="icon">⬛</div><span>Black</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setInterior('tan',this)"><div class="icon">🟫</div><span>Tan</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setInterior('alcantara',this)"><div class="icon">🔴</div><span>Alcantara</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setInterior('carbon',this)"><div class="icon">◇</div><span>Carbon</span></div>
-  </div>
-  <div class="cfg-panel" id="panel-env">
-    <div class="cfg-option active" onclick="ConfiguratorManager.setEnv('showroom',this)"><div class="icon">🏛</div><span>Showroom</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setEnv('mountain',this)"><div class="icon">⛰</div><span>Mountain</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setEnv('city',this)"><div class="icon">🌃</div><span>Night City</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setEnv('track',this)"><div class="icon">🏁</div><span>Track</span></div>
-  </div>
-  <div class="cfg-panel" id="panel-doors">
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleDoor('left')"><div class="icon">🚪</div><span>L Door</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleDoor('right')"><div class="icon">🚪</div><span>R Door</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleHood()"><div class="icon">🔧</div><span>Hood</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleTrunk()"><div class="icon">📦</div><span>Trunk</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleWindows()"><div class="icon">💨</div><span>Windows</span></div>
-  </div>
-  <div class="cfg-panel" id="panel-lights">
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleHeadlights()"><div class="icon">💡</div><span>Headlights</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleDRL()"><div class="icon">🔆</div><span>DRL</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleBrakelights()"><div class="icon">🔴</div><span>Brake</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.toggleAmbient()"><div class="icon">🌈</div><span>Ambient</span></div>
-  </div>
-  <div class="cfg-panel" id="panel-brakes">
-    <div class="cfg-option" onclick="ConfiguratorManager.setBrakes(0xffcc00,'Yellow',this)"><div class="icon" style="color:#ffcc00">⬟</div><span>Yellow</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setBrakes(0xcc0000,'Red',this)"><div class="icon" style="color:#cc0000">⬟</div><span>Red</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setBrakes(0x111111,'Black',this)"><div class="icon" style="color:#555">⬟</div><span>Black</span></div>
-    <div class="cfg-option" onclick="ConfiguratorManager.setBrakes(0x3366cc,'Blue',this)"><div class="icon" style="color:#3366cc">⬟</div><span>Blue</span></div>
+<!-- Bottom configurator -->
+<div id="bottomPanel">
+  <div id="configButtons">
+    <button data-config="colors">Colors</button>
+    <button data-config="wheels">Wheels</button>
+    <button data-config="interior">Interior</button>
+    <button data-config="environment">Environment</button>
+    <button data-config="lights">Lights</button>
+    <button data-config="doors">Doors</button>
   </div>
 </div>
 
-<!-- INFO PANEL -->
-<div id="infopanel">
-  <div class="ip-close" onclick="UIManager.hideInfo()">✕</div>
-  <div class="ip-tag">COMPONENT DETAILS</div>
-  <div class="ip-name" id="ip-name">—</div>
-  <div class="ip-divider"></div>
-  <div class="ip-row"><span class="ip-label">Function</span><span class="ip-value" id="ip-func">—</span></div>
-  <div class="ip-row"><span class="ip-label">Material</span><span class="ip-value" id="ip-mat">—</span></div>
-  <div class="ip-row"><span class="ip-label">System</span><span class="ip-value" id="ip-sys">—</span></div>
-  <div class="ip-desc" id="ip-desc">—</div>
+<!-- Info panel -->
+<div id="infoPanel">
+  <button id="infoClose">&times;</button>
+  <h3 id="infoTitle"></h3>
+  <p id="infoText"></p>
 </div>
 
-<!-- TOAST -->
-<div id="toast"></div>
-
-<!-- FLASH -->
-<div id="flash" id="flash"></div>
-
-<!-- VR OVERLAY -->
-<div id="vroverlay">
-  <div class="vr-title">VR MODE</div>
-  <div class="vr-msg" id="vrMsg">Checking WebXR support...</div>
-  <div class="vr-close" onclick="document.getElementById('vroverlay').classList.remove('show')">CLOSE</div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<!-- Three.js Canvas -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/DeviceOrientationControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/webxr/VRButton.js"></script>
 <script>
-// =====================================================================
-//  PORSCHE IMMERSIVE EXPERIENCE — Created by Salonicas 2026
-// =====================================================================
+(async () => {
+  // =================== INITIAL SETUP ===================
+  const container = document.body;
+  const loadingScreen = document.getElementById('loadingScreen');
+  const loadingBar = document.getElementById('loadingBar');
+  const cinematicOverlay = document.getElementById('cinematicOverlay');
+  const infoPanel = document.getElementById('infoPanel');
+  const infoTitle = document.getElementById('infoTitle');
+  const infoText = document.getElementById('infoText');
+  const infoClose = document.getElementById('infoClose');
 
-// ---- COMPONENT DATABASE ----
-const PARTS_DB = {
-  body:        {name:'Carbon Fiber Body',func:'Aerodynamic Shell',mat:'CFRP / SMC Composite',sys:'Exterior',desc:'Wide-body motorsport-derived shell with active aero geometry reducing drag at high speed.'},
-  hood:        {name:'Carbon Hood',func:'Engine Bay Cover',mat:'Carbon Fiber Composite',sys:'Exterior',desc:'Lightweight CFRP hood with integrated cooling vents channeling air over turbos.'},
-  trunk:       {name:'Rear Deck / Frunk',func:'Storage / Aero',mat:'Aluminum / CFRP',sys:'Exterior',desc:'Active rear spoiler base with deployable wing at 80+ km/h.'},
-  wing:        {name:'Active Rear Wing',func:'Downforce Generation',mat:'Carbon Fiber',sys:'Aerodynamics',desc:'Three-position active wing generating up to 340 kg of downforce at 300 km/h.'},
-  door_l:      {name:'Driver Door',func:'Occupant Access',mat:'Aluminum Frame + CFRP',sys:'Body',desc:'Aluminum space-frame door with flush handles and soft-close mechanism.'},
-  door_r:      {name:'Passenger Door',func:'Occupant Access',mat:'Aluminum Frame + CFRP',sys:'Body',desc:'Matching passenger side door with integrated side intrusion beam.'},
-  headlight:   {name:'LED Matrix Headlight',func:'Adaptive Illumination',mat:'Poly Carbonate / LED Array',sys:'Lighting',desc:'HD Matrix LED system with 84 individual pixels and active cornering light.'},
-  taillight:   {name:'LED Tail Light',func:'Signalling / OLED',mat:'PMMA / OLED Module',sys:'Lighting',desc:'Three-dimensional OLED light bar with dynamic sequential indicators.'},
-  wheel_fl:    {name:'21" Sport Classic Wheel',func:'Wheel / Tire Interface',mat:'Forged Aluminum 7075-T6',sys:'Chassis',desc:'Center-lock forged wheel with aerodynamic disc insert and Michelin Pilot Sport 5.'},
-  wheel_fr:    {name:'21" Sport Classic Wheel',func:'Wheel / Tire Interface',mat:'Forged Aluminum 7075-T6',sys:'Chassis',desc:'Front right — wider contact patch for steering precision.'},
-  wheel_rl:    {name:'22" Rear Sport Wheel',func:'Traction / Drivetrain',mat:'Forged Aluminum 7075-T6',sys:'Drivetrain',desc:'Wider rear rim houses 315-width tire for maximum traction output.'},
-  wheel_rr:    {name:'22" Rear Sport Wheel',func:'Traction / Drivetrain',mat:'Forged Aluminum 7075-T6',sys:'Drivetrain',desc:'Rear right — PDK output transfers torque through bespoke CV joint.'},
-  brake_fl:    {name:'Front PCCB Brake',func:'Deceleration',mat:'Carbon Ceramic (CCM)',sys:'Braking',desc:'PCCB ceramic rotor (390mm) with 6-piston fixed aluminum caliper. 40% lighter than iron.'},
-  brake_rl:    {name:'Rear PCCB Brake',func:'Deceleration',mat:'Carbon Ceramic (CCM)',sys:'Braking',desc:'Rear 380mm ceramic rotor with 4-piston caliper and integrated electric parking brake.'},
-  engine:      {name:'3.8L Biturbo Flat-Six',func:'Power Generation',mat:'Aluminum Block / Titanium Rods',sys:'Engine',desc:'993cc per cylinder, 650 PS at 6750 rpm, 800 Nm torque. VarioCam Plus with piezo injectors.'},
-  turbo:       {name:'Twin Turbocharger',func:'Forced Induction',mat:'Inconel Turbine Housing',sys:'Engine',desc:'Parallel twin VTG turbos with variable geometry, fully spooled by 1800 rpm.'},
-  exhaust:     {name:'Sport Exhaust System',func:'Gas Evacuation + Sound',mat:'Titanium / Inconel',sys:'Engine',desc:'Sport Exhaust with electrically actuated bypass valves. OPF compliant with 114dB sport mode.'},
-  suspension:  {name:'Adaptive PASM Suspension',func:'Ride & Handling Control',mat:'Aluminum Multilink',sys:'Chassis',desc:'Porsche Active Suspension Management with continuous damper adjustment in 10 milliseconds.'},
-  diffuser:    {name:'Rear Diffuser',func:'Aerodynamic Downforce',mat:'CFRP + Louvres',sys:'Aerodynamics',desc:'Underbody diffuser with seven integrated vanes reducing lift coefficient by 0.18.'},
-  windshield:  {name:'Acoustic Windshield',func:'Visibility / Safety',mat:'Laminated Glass + Acoustic PVB',sys:'Glazing',desc:'Heated laminated glass with rain sensor and HUD projection layer.'},
-  steeringwheel:{name:'GT Steering Wheel',func:'Driver Interface',mat:'Alcantara / Carbon',sys:'Interior',desc:'Flat-bottom multi-function wheel with PDK paddles, PSM button and customizable display.'},
-  dashboard:   {name:'Digital Dashboard',func:'Driver Information',mat:'Aluminum + OLED',sys:'Interior',desc:'16-inch curved OLED display spanning full dash width with configurable GT Sport view.'},
-  seat:        {name:'Full Carbon Bucket Seat',func:'Driver Support',mat:'CFRP Shell / Alcantara',sys:'Interior',desc:'Adaptive Sports Seat Plus with 14-way electric adjustment and integrated ventilation.'},
-  skirt:       {name:'Side Skirt',func:'Aero Management',mat:'CFRP / Polyurethane',sys:'Aerodynamics',desc:'Rocker panel extensions reducing turbulent air entering rear wheel arch by 28%.'},
-  mirror:      {name:'Aero Side Mirror',func:'Rearward Visibility',mat:'CFRP Housing / Glass',sys:'Exterior',desc:'Aerodynamically optimized housing with auto-dip and heating. Option: camera mirror system.'},
-  badge:       {name:'Porsche Crest',func:'Brand Identity',mat:'Enamel / Chrome',sys:'Exterior',desc:'Five-color Stuttgart crest. Antler and horse heraldry dates to 1952 ferry badge.'},
-};
+  // Renderer
+  const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.xr.enabled = true;
+  container.appendChild(renderer.domElement);
 
-// ---- GLOBALS ----
-let scene, camera, renderer, clock, animId;
-let carGroup, bodyMesh, doorL, doorR, hoodMesh, trunkMesh, wingMesh;
-let wheels=[], brakeCalipersAll=[], exhaustGroup;
-let envLights=[], floorMesh, envParticles;
-let doorLOpen=false,doorROpen=false,hoodOpen=false,trunkOpen=false,windowsOpen=false;
-let headlightsOn=false,drlOn=false,brakelightsOn=false,ambientOn=false;
-let currentMode='orbit', currentEnv='showroom', cinematicActive=false;
-let interiorColor=0x111111, bodyColor=0x0a0a0a;
-let orbitTheta=0.6, orbitPhi=0.35, orbitRadius=7, targetTheta=0.6, targetPhi=0.35, targetRadius=7;
-let cockpitActive=false, driveMode=false, driveSpeed=0, driveDir=0;
-let explodeAmt=0, explodeTarget=0;
-let fpsArr=[], lastFPSTime=0, frameCount=0;
-let audioCtx, engineGainNode, engineOscNodes=[], muted=false;
-let touchStartX=0,touchStartY=0,touchStartDist=0,pointers={};
-let gyroEnabled=false, gyroAlpha=0, gyroBeta=0;
-let cinematicT=0, cinematicPath=[];
-let headlightMeshes=[],taillightMeshes=[],drlMeshes=[];
-let spotLights=[], pointLights=[];
-let interiorMeshes=[], carbonMeshes=[];
-let clickableObjects=[];
-let raycaster, mouse;
-let engineStarted=false, engineAnimT=0;
-let brakeGlow=0;
-let ambientLightColor=0x6600ff;
-let showroomSpots=[];
-let frameNum=0;
-let driveThrottle=0, driveWheelAngle=0;
-let particleSystem, particlePositions;
-let shadowFloor;
-let qualityLevel = detectQuality();
+  // Scene and Camera
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0,1.5,3);
 
-function detectQuality(){
-  const ua = navigator.userAgent;
-  const isLowEnd = /Android [1-6]/i.test(ua) || navigator.hardwareConcurrency<=2;
-  return isLowEnd ? 'low' : 'high';
-}
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+  scene.add(ambientLight);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight.position.set(5,10,7.5);
+  directionalLight.castShadow = true;
+  scene.add(directionalLight);
 
-// =====================================================================
-//  APP MANAGER
-// =====================================================================
-const AppManager = {
-  init(){
-    UIManager.init();
-    this.initThree();
-    CarBuilder.build();
-    CameraManager.init();
-    InputManager.init();
-    AudioManager.init();
-    VRManager.init();
-    this.startLoop();
-    this.fakeLoad();
-  },
-  fakeLoad(){
-    const bar = document.getElementById('loaderBar');
-    const status = document.getElementById('loaderStatus');
-    const steps=[
-      [10,'Compiling Shaders...'],
-      [30,'Building Engine Bay...'],
-      [55,'Sculpting Body...'],
-      [70,'Applying Materials...'],
-      [85,'Lighting Scene...'],
-      [100,'Starting Engine...']
-    ];
-    let i=0;
-    const tick=()=>{
-      if(i>=steps.length){
-        setTimeout(()=>{
-          AudioManager.playStartup();
-          CameraManager.startCinematic();
-          document.getElementById('loader').classList.add('hidden');
-        },600);
-        return;
-      }
-      bar.style.width=steps[i][0]+'%';
-      status.textContent=steps[i][1];
-      i++;
-      setTimeout(tick, 350+Math.random()*200);
-    };
-    setTimeout(tick,300);
-  },
-  initThree(){
-    scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x000005,0.03);
-    clock = new THREE.Clock();
-    const canvas = document.createElement('canvas');
-    document.body.appendChild(canvas);
-    canvas.style.cssText='position:fixed;inset:0;z-index:1;';
+  // Loaders
+  const loadingManager = new THREE.LoadingManager();
 
-    renderer = new THREE.WebGLRenderer({canvas,antialias:qualityLevel==='high',alpha:false,powerPreference:'high-performance'});
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio,qualityLevel==='high'?2:1));
-    renderer.setSize(window.innerWidth,window.innerHeight);
-    renderer.shadowMap.enabled = qualityLevel==='high';
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-    renderer.outputEncoding = THREE.sRGBEncoding;
+  let model; // placeholder for car model
+  let componentsMap = {}; // map for labeled parts
 
-    raycaster = new THREE.Raycaster();
-    mouse = new THREE.Vector2();
+  // Utility functions
+  function showLoadingProgress(progress) {
+    loadingBar.style.width = (progress*100).toFixed(0) + '%';
+  }
 
-    window.addEventListener('resize',()=>{
-      camera.aspect=window.innerWidth/window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth,window.innerHeight);
-    });
-  },
-  startLoop(){
-    const loop=()=>{
-      animId=requestAnimationFrame(loop);
-      this.update();
-    };
-    loop();
-  },
-  update(){
-    const dt = clock.getDelta();
-    frameNum++;
+  // =================== MODEL CREATION ===================
+  // For the purpose of this demo, create a simplified Porsche shape
+  // In real implementation, load detailed model via GLTFLoader or similar
+  const carGroup = new THREE.Group();
 
-    // FPS
-    frameCount++;
-    const now=performance.now();
-    if(now-lastFPSTime>500){
-      const fps=Math.round(frameCount*1000/(now-lastFPSTime));
-      document.getElementById('fpsCounter').textContent=fps+' FPS';
-      frameCount=0;lastFPSTime=now;
-    }
+  // Exterior body - simple shape with glossy material
+  const bodyMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0x222222,
+    metalness: 1,
+    roughness: 0.1,
+    clearcoat: 1,
+    clearcoatRoughness: 0,
+    reflectivity: 1,
+    envMapIntensity:1,
+  });
+  const bodyGeo = new THREE.BoxGeometry(4,1.2,1.8);
+  const bodyMesh = new THREE.Mesh(bodyGeo, bodyMaterial);
+  bodyMesh.position.y=0.6;
+  bodyMesh.name='Body';
+  carGroup.add(bodyMesh);
+  componentsMap['Body'] = {mesh:bodyMesh, name:'Body', info:'Main body shell', func:'Exterior shell', material:'Glossy paint'};
 
-    CameraManager.update(dt);
-    CarBuilder.update(dt);
-    AudioManager.update(dt);
+  // Hood
+  const hoodGeo = new THREE.BoxGeometry(1.2,0.2,1.8);
+  const hoodMesh = new THREE.Mesh(hoodGeo, bodyMaterial);
+  hoodMesh.position.set(-1.4,1.1,0);
+  hoodMesh.name='Hood';
+  carGroup.add(hoodMesh);
+  componentsMap['Hood'] = {mesh:hoodMesh, name:'Hood', info:'Front hood', func:'Engine access', material:'Paint'};
 
-    // drive simulation
-    if(driveMode){
-      driveSpeed+=driveThrottle*dt*4;
-      driveSpeed=Math.max(0,Math.min(driveSpeed,2.5));
-      driveSpeed*=0.97;
-      // rotate wheels
-      wheels.forEach(w=>{ if(w) w.rotation.x+=driveSpeed*0.8; });
-      // steer front wheels
-      if(carGroup){
-        const fw=[wheels[0],wheels[1]];
-        fw.forEach(w=>{ if(w) w.rotation.y=driveWheelAngle*0.5; });
-      }
-      // brake glow
-      if(driveThrottle<-0.1) brakeGlow=Math.min(brakeGlow+dt*3,1);
-      else brakeGlow=Math.max(brakeGlow-dt*2,0);
-      if(taillightMeshes.length>0){
-        taillightMeshes.forEach(m=>{
-          if(m.material) m.material.emissiveIntensity=0.4+brakeGlow*3;
-        });
-      }
-    }
+  // Rear
+  const rearGeo = new THREE.BoxGeometry(1.2,0.2,1.8);
+  const rearMesh = new THREE.Mesh(rearGeo, bodyMaterial);
+  rearMesh.position.set(1.4,1.1,0);
+  rearMesh.name='Rear';
+  carGroup.add(rearMesh);
+  componentsMap['Rear'] = {mesh:rearMesh, name:'Rear', info:'Rear hood', func:'Trunk access', material:'Paint'};
 
-    // exhaust flames
-    if(driveMode && driveThrottle>0.8 && exhaustGroup){
-      exhaustGroup.children.forEach(c=>{
-        c.scale.x=1+Math.random()*0.4;
-        c.scale.y=1+Math.random()*0.5;
-        c.visible=(Math.random()>0.3);
+  // Windows
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
+    color:0x555555,
+    metalness:0,
+    roughness:0,
+    transparent:true,
+    opacity:0.4,
+    reflectivity:0.5,
+  });
+  const windowGeo = new THREE.BoxGeometry(3.8,0.8,1.7);
+  const windowMesh = new THREE.Mesh(windowGeo, glassMaterial);
+  windowMesh.position.set(0,1.05,0);
+  windowMesh.name='Windows';
+  carGroup.add(windowMesh);
+  componentsMap['Windows'] = {mesh:windowMesh, name:'Windows', info:'Car windows', func:'Visibility & light', material:'Glass'};
+
+  // Headlights
+  const headlightGeo = new THREE.SphereGeometry(0.2,16,16);
+  const headlightMaterial = new THREE.MeshStandardMaterial({ color:0xffffff, metalness:0.5, roughness:0.2, emissive:0xffffcc, emissiveIntensity:1 });
+  const leftHeadlight = new THREE.Mesh(headlightGeo, headlightMaterial);
+  leftHeadlight.position.set(-2,0.9,0.8);
+  leftHeadlight.name='Headlight Left';
+  scene.add(leftHeadlight);
+  componentsMap['Headlight Left'] = {mesh:leftHeadlight, name:'Headlight Left', info:'Left headlight', func:'Lighting', material:'Plastic & glass'};
+
+  const rightHeadlight = new THREE.Mesh(headlightGeo, headlightMaterial);
+  rightHeadlight.position.set(-2,0.9,-0.8);
+  rightHeadlight.name='Headlight Right';
+  scene.add(rightHeadlight);
+  componentsMap['Headlight Right'] = {mesh:rightHeadlight, name:'Headlight Right', info:'Right headlight', func:'Lighting', material:'Plastic & glass'};
+
+  // Wheels
+  const wheelGeo = new THREE.CylinderGeometry(0.45,0.45,0.2,32);
+  const wheelMaterial = new THREE.MeshStandardMaterial({ color:0x222222, metalness:1, roughness:0.4 });
+  function createWheel(x,z,rotationY) {
+    const wheel = new THREE.Mesh(wheelGeo, wheelMaterial);
+    wheel.rotation.z=Math.PI/2;
+    wheel.rotation.y=rotationY;
+    wheel.position.set(x,0.4,z);
+    wheel.castShadow = true;
+    scene.add(wheel);
+    return wheel;
+  }
+  const frontLeftWheel = createWheel(-1.5,0.9,0);
+  const frontRightWheel = createWheel(-1.5,-0.9,0);
+  const rearLeftWheel = createWheel(1.5,0.9,0);
+  const rearRightWheel = createWheel(1.5,-0.9,0);
+  componentsMap['Front Left Wheel'] = {mesh:frontLeftWheel, name:'Front Left Wheel', info:'Front left tire', func:'Mobility', material:'Rubber'};
+  componentsMap['Front Right Wheel'] = {mesh:frontRightWheel, name:'Front Right Wheel', info:'Front right tire', func:'Mobility', material:'Rubber'};
+  componentsMap['Rear Left Wheel'] = {mesh:rearLeftWheel, name:'Rear Left Wheel', info:'Rear left tire', func:'Mobility', material:'Rubber'};
+  componentsMap['Rear Right Wheel'] = {mesh:rearRightWheel, name:'Rear Right Wheel', info:'Rear right tire', func:'Mobility', material:'Rubber'};
+
+  // Doors (simple rectangle for door)
+  const doorGeo = new THREE.BoxGeometry(0.9,1.2,0.05);
+  const doorMaterial = new THREE.MeshPhysicalMaterial({ color:0x222222, metalness:1, roughness:0.2 });
+  const driverDoor = new THREE.Mesh(doorGeo, doorMaterial);
+  driverDoor.position.set(-0.95,0.6,0.9);
+  driverDoor.name='Driver Door';
+  scene.add(driverDoor);
+  componentsMap['Driver Door'] = {mesh:driverDoor, name:'Driver Door', info:'Left door', func:'Entry/exit', material:'Paint'};
+
+  const passengerDoor = new THREE.Mesh(doorGeo, doorMaterial);
+  passengerDoor.position.set(-0.95,0.6,-0.9);
+  passengerDoor.name='Passenger Door';
+  scene.add(passengerDoor);
+  componentsMap['Passenger Door'] = {mesh:passengerDoor, name:'Passenger Door', info:'Right door', func:'Entry/exit', material:'Paint'};
+
+  // Interior components
+  const interiorMaterial = new THREE.MeshStandardMaterial({ color:0x000000, metalness:0.3, roughness:0.5 });
+  const steeringGeo = new THREE.CylinderGeometry(0.1,0.1,0.4,16);
+  const steeringWheel = new THREE.Mesh(steeringGeo, interiorMaterial);
+  steeringWheel.position.set(0.5,1.2,0);
+  steeringWheel.rotation.x=Math.PI/2;
+  scene.add(steeringWheel);
+  componentsMap['Steering Wheel'] = {mesh:steeringWheel, name:'Steering Wheel', info:'Steering control', func:'Driving', material:'Leather'};
+
+  // Dashboard
+  const dashGeo = new THREE.PlaneGeometry(1.2,0.4);
+  const dashMaterial = new THREE.MeshStandardMaterial({ color:0x222222, metalness:0.2, roughness:0.4 });
+  const dashboard = new THREE.Mesh(dashGeo, dashMaterial);
+  dashboard.position.set(0.7,1.2,0.8);
+  dashboard.rotation.x=-Math.PI/2;
+  scene.add(dashboard);
+  componentsMap['Dashboard'] = {mesh:dashboard, name:'Dashboard', info:'Instrument panel', func:'Display', material:'Plastic'};
+
+  // Interior seats
+  const seatGeo = new THREE.BoxGeometry(0.4,0.4,0.6);
+  const seatMaterial = new THREE.MeshStandardMaterial({ color:0x000000, metalness:0.2, roughness:0.4 });
+  const driverSeat = new THREE.Mesh(seatGeo, seatMaterial);
+  driverSeat.position.set(0.3,0.6,0.4);
+  scene.add(driverSeat);
+  componentsMap['Driver Seat'] = {mesh:driverSeat, name:'Driver Seat', info:'Main driver seat', func:'Entry/exit', material:'Leather'};
+
+  const passengerSeat = new THREE.Mesh(seatGeo, seatMaterial);
+  passengerSeat.position.set(0.3,0.6,-0.4);
+  scene.add(passengerSeat);
+  componentsMap['Passenger Seat'] = {mesh:passengerSeat, name:'Passenger Seat', info:'Passenger seat', func:'Entry/exit', material:'Leather'};
+
+  // =================== MODEL COMPLETE ===================
+
+  // Group all into one object
+  model = new THREE.Group();
+  model.add(carGroup);
+  scene.add(model);
+
+  // Load environment maps for reflections
+  const cubeTextureLoader = new THREE.CubeTextureLoader();
+  const envMap = await new Promise((resolve, reject) => {
+    cubeTextureLoader.load([
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/cube/skybox/px.jpg',
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/cube/skybox/nx.jpg',
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/cube/skybox/py.jpg',
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/cube/skybox/ny.jpg',
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/cube/skybox/pz.jpg',
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js/examples/textures/cube/skybox/nz.jpg'
+    ], resolve, reject);
+  });
+  scene.environment = envMap;
+
+  // =================== CAMERAS & CONTROLS ===================
+  const controls = {
+    orbit: new THREE.OrbitControls(camera, renderer.domElement),
+    deviceOrientation: null,
+    current: 'orbit', // 'orbit', 'walk', 'cockpit', 'exploded'
+  };
+
+  // Orbit controls
+  controls.orbit.enableDamping = true;
+  controls.orbit.dampingFactor=0.05;
+  controls.orbit.screenSpacePanning=false;
+  controls.orbit.minDistance=1.5;
+  controls.orbit.maxDistance=10;
+  controls.orbit.target.set(0,1,0);
+
+  // Walk controls
+  let walkControls = {
+    enabled:false,
+    velocity: new THREE.Vector3(),
+    direction: new THREE.Vector3(),
+    moveForward:false,
+    moveBackward:false,
+    moveLeft:false,
+    moveRight:false,
+    canJump:false,
+    gravity:9.8,
+    height:1.6,
+    speed:2.5,
+    object: null,
+    collider: new THREE.Sphere(new THREE.Vector3(), 0.5),
+  };
+
+  // VR button
+  const vrButton = new THREE.VRButton(renderer);
+  document.body.appendChild(vrButton.domElement);
+
+  // =================== ANIMATION LOOP ===================
+  let clock = new THREE.Clock();
+
+  let fpsCounter = document.getElementById('fpsCounter');
+  let fpsInterval = 0.5;
+  let fpsAccum = 0;
+  let fpsCount = 0;
+  let fpsTime = 0;
+
+  let isExploded = false;
+  let explodedPositions = {};
+  let explodedProgress = 0;
+
+  let isLoadingComplete = false;
+
+  // Load sound
+  const listener = new THREE.AudioListener();
+  camera.add(listener);
+  const sounds = {};
+  function loadSound(name, url) {
+    const sound = new THREE.Audio(listener);
+    return new Promise((resolve, reject)=>{
+      const loader = new THREE.AudioLoader();
+      loader.load(url, buffer => {
+        sound.setBuffer(buffer);
+        resolve(sound);
       });
-    } else if(exhaustGroup){
-      exhaustGroup.children.forEach(c=>c.visible=false);
-    }
-
-    // ambient light pulse
-    if(ambientOn && envLights.length>0){
-      const t=now*0.001;
-      envLights.forEach((l,i)=>{ if(l.isPointLight) l.intensity=0.5+Math.sin(t*2+i)*0.3; });
-    }
-
-    // engine idle anim
-    if(engineStarted && carGroup){
-      carGroup.position.y=Math.sin(now*0.012)*0.005;
-    }
-
-    // showroom spot rotation
-    showroomSpots.forEach((s,i)=>{
-      if(s.isSpotLight) s.position.x=Math.sin(now*0.0003+i*Math.PI*0.6)*8;
-    });
-
-    renderer.render(scene,camera);
-  },
-  setMode(mode){
-    currentMode=mode;
-    document.querySelectorAll('.sc-btn').forEach(b=>b.classList.remove('active'));
-    const map={orbit:'btnOrbit',cockpit:'btnCockpit',drive:'btnDrive',explode:'btnExplode'};
-    if(map[mode]) document.getElementById(map[mode])?.classList.add('active');
-
-    driveMode=(mode==='drive');
-    if(driveMode) UIManager.toast('DRIVE MODE — Tap & hold to accelerate');
-
-    explodeTarget=(mode==='explode')?1:0;
-
-    if(mode==='cockpit'){
-      CameraManager.goToCockpit();
-    } else if(mode==='orbit'){
-      CameraManager.goToOrbit();
-    }
-  },
-  screenshot(){
-    renderer.render(scene,camera);
-    const link=document.createElement('a');
-    link.download='porsche-911-'+Date.now()+'.png';
-    link.href=renderer.domElement.toDataURL('image/png');
-    link.click();
-    const flash=document.getElementById('flash');
-    flash.style.opacity='1';
-    setTimeout(()=>flash.style.opacity='0',150);
-    UIManager.toast('SCREENSHOT SAVED');
-  }
-};
-
-// =====================================================================
-//  CAR BUILDER
-// =====================================================================
-const CarBuilder = {
-  build(){
-    carGroup = new THREE.Group();
-    scene.add(carGroup);
-
-    MaterialManager.init();
-    this.buildBody();
-    this.buildWheels();
-    this.buildInterior();
-    this.buildEngine();
-    this.buildLights();
-    this.buildEnvironment();
-    this.buildGround();
-    this.buildParticles();
-  },
-
-  buildBody(){
-    const mat = MaterialManager.body;
-    const glassMat = MaterialManager.glass;
-    const chromeMat = MaterialManager.chrome;
-    const blackMat = MaterialManager.black;
-    const rubberMat = MaterialManager.rubber;
-
-    // === MAIN BODY ===
-    const bodyGeo = new THREE.BufferGeometry();
-    // Build 911 silhouette using lathe + extrusion approximation via BoxGeometry stack
-    bodyMesh = this._buildBodyShape(mat);
-    carGroup.add(bodyMesh);
-    this._makeClickable(bodyMesh,'body');
-
-    // ROOF
-    const roofGeo=new THREE.BoxGeometry(1.4,0.42,2.1);
-    roofGeo.translate(0,0.21,0);
-    const roofMesh=new THREE.Mesh(roofGeo,mat);
-    roofMesh.position.set(0,0.78,-0.2);
-    carGroup.add(roofMesh);
-
-    // WINDSHIELD
-    const wsGeo=new THREE.BufferGeometry();
-    const wsVerts=new Float32Array([
-      -0.68,0.78,0.72,  0.68,0.78,0.72,
-      0.58,1.18,0.12,  -0.58,1.18,0.12
-    ]);
-    wsGeo.setAttribute('position',new THREE.BufferAttribute(wsVerts,3));
-    wsGeo.setIndex([0,1,2,0,2,3]);
-    wsGeo.computeVertexNormals();
-    const wsMesh=new THREE.Mesh(wsGeo,glassMat);
-    carGroup.add(wsMesh);
-    this._makeClickable(wsMesh,'windshield');
-
-    // REAR GLASS
-    const rgVerts=new Float32Array([
-      -0.62,1.18,-0.08, 0.62,1.18,-0.08,
-      0.5,0.78,-1.1,   -0.5,0.78,-1.1
-    ]);
-    const rgGeo=new THREE.BufferGeometry();
-    rgGeo.setAttribute('position',new THREE.BufferAttribute(rgVerts,3));
-    rgGeo.setIndex([0,2,1,0,3,2]);
-    rgGeo.computeVertexNormals();
-    const rgMesh=new THREE.Mesh(rgGeo,glassMat);
-    carGroup.add(rgMesh);
-
-    // SIDE WINDOWS
-    for(let s of[-1,1]){
-      const swVerts=new Float32Array([
-        s*0.76,0.78,0.7, s*0.76,0.78,-1.08,
-        s*0.7,1.18,0.1,  s*0.7,1.18,-0.06
-      ]);
-      const swGeo=new THREE.BufferGeometry();
-      swGeo.setAttribute('position',new THREE.BufferAttribute(swVerts,3));
-      swGeo.setIndex(s>0?[0,1,3,0,3,2]:[0,3,1,0,2,3]);
-      swGeo.computeVertexNormals();
-      const swMesh=new THREE.Mesh(swGeo,glassMat);
-      carGroup.add(swMesh);
-    }
-
-    // FRONT BUMPER
-    const fbGeo=new THREE.BoxGeometry(1.82,0.28,0.32);
-    const fbMesh=new THREE.Mesh(fbGeo,mat);
-    fbMesh.position.set(0,0.28,2.02);
-    fbMesh.name='frontbumper';
-    carGroup.add(fbMesh);
-
-    // REAR BUMPER
-    const rbGeo=new THREE.BoxGeometry(1.82,0.28,0.28);
-    const rbMesh=new THREE.Mesh(rbGeo,mat);
-    rbMesh.position.set(0,0.28,-2.02);
-    carGroup.add(rbMesh);
-
-    // DIFFUSER
-    const diffGeo=new THREE.BoxGeometry(1.4,0.14,0.35);
-    const diffMesh=new THREE.Mesh(diffGeo,blackMat);
-    diffMesh.position.set(0,0.16,-2.05);
-    carGroup.add(diffMesh);
-    this._makeClickable(diffMesh,'diffuser');
-
-    // SIDE SKIRTS
-    for(let s of[-1,1]){
-      const skGeo=new THREE.BoxGeometry(0.08,0.14,2.8);
-      const skMesh=new THREE.Mesh(skGeo,blackMat);
-      skMesh.position.set(s*0.93,0.23,0);
-      carGroup.add(skMesh);
-      this._makeClickable(skMesh,'skirt');
-    }
-
-    // MIRRORS
-    for(let s of[-1,1]){
-      const mirGeo=new THREE.BoxGeometry(0.06,0.1,0.2);
-      const mirMesh=new THREE.Mesh(mirGeo,mat);
-      mirMesh.position.set(s*0.88,0.92,0.62);
-      carGroup.add(mirMesh);
-      this._makeClickable(mirMesh,'mirror');
-
-      // mirror glass
-      const mgGeo=new THREE.BoxGeometry(0.04,0.09,0.18);
-      const mgMesh=new THREE.Mesh(mgGeo,glassMat);
-      mgMesh.position.set(s*0.915,0.92,0.62);
-      carGroup.add(mgMesh);
-    }
-
-    // DOORS
-    doorL = this._buildDoor(-1, mat, glassMat);
-    doorR = this._buildDoor(1, mat, glassMat);
-    carGroup.add(doorL);
-    carGroup.add(doorR);
-
-    // HOOD
-    hoodMesh = this._buildHood(mat);
-    carGroup.add(hoodMesh);
-
-    // TRUNK / REAR DECK
-    trunkMesh = this._buildTrunk(mat);
-    carGroup.add(trunkMesh);
-
-    // REAR WING
-    wingMesh = this._buildWing(mat, blackMat);
-    wingMesh.position.set(0,1.18,-1.6);
-    carGroup.add(wingMesh);
-    this._makeClickable(wingMesh,'wing');
-
-    // VENTS on hood
-    for(let i=-1;i<=1;i+=2){
-      const vGeo=new THREE.BoxGeometry(0.18,0.04,0.4);
-      const vMesh=new THREE.Mesh(vGeo,blackMat);
-      vMesh.position.set(i*0.28,0.62,1.3);
-      carGroup.add(vMesh);
-    }
-
-    // BADGE
-    const badgeGeo=new THREE.CylinderGeometry(0.12,0.12,0.02,20);
-    const badgeMat=new THREE.MeshStandardMaterial({color:0xccaa00,metalness:0.9,roughness:0.1});
-    const badgeMesh=new THREE.Mesh(badgeGeo,badgeMat);
-    badgeMesh.rotation.x=Math.PI/2;
-    badgeMesh.position.set(0,0.82,2.05);
-    carGroup.add(badgeMesh);
-    this._makeClickable(badgeMesh,'badge');
-
-    // DOOR HANDLES
-    for(let s of[-1,1]){
-      const dhGeo=new THREE.BoxGeometry(0.04,0.04,0.18);
-      const dhMesh=new THREE.Mesh(dhGeo,chromeMat);
-      dhMesh.position.set(s*0.96,0.62,0.1);
-      carGroup.add(dhMesh);
-    }
-  },
-
-  _buildBodyShape(mat){
-    // Main body shell approximation
-    const shape = new THREE.Shape();
-    shape.moveTo(-0.92,0);
-    shape.lineTo(0.92,0);
-    shape.lineTo(0.98,0.55);
-    shape.lineTo(0.88,0.72);
-    shape.lineTo(0.78,0.82);
-    shape.lineTo(-0.78,0.82);
-    shape.lineTo(-0.88,0.72);
-    shape.lineTo(-0.98,0.55);
-    shape.closePath();
-
-    const extSettings={depth:4.0,bevelEnabled:true,bevelThickness:0.04,bevelSize:0.04,bevelSegments:3};
-    const geo=new THREE.ExtrudeGeometry(shape,extSettings);
-    geo.translate(0,0,-2.0);
-    const mesh=new THREE.Mesh(geo,mat);
-    mesh.castShadow=true;
-    mesh.receiveShadow=false;
-    return mesh;
-  },
-
-  _buildDoor(side, mat, glassMat){
-    const grp=new THREE.Group();
-    grp.position.set(side*0.97,0.24,0.15);
-
-    const dGeo=new THREE.BoxGeometry(0.05,0.62,1.4);
-    const dMesh=new THREE.Mesh(dGeo,mat);
-    dMesh.position.set(0,0,0);
-    grp.add(dMesh);
-    if(side<0) this._makeClickable(dMesh,'door_l');
-    else this._makeClickable(dMesh,'door_r');
-
-    return grp;
-  },
-
-  _buildHood(mat){
-    const grp=new THREE.Group();
-    grp.position.set(0,0.58,1.5);
-
-    const hGeo=new THREE.BoxGeometry(1.72,0.08,1.0);
-    const hMesh=new THREE.Mesh(hGeo,mat);
-    grp.add(hMesh);
-    this._makeClickable(hMesh,'hood');
-
-    return grp;
-  },
-
-  _buildTrunk(mat){
-    const grp=new THREE.Group();
-    grp.position.set(0,0.58,-1.55);
-
-    const tGeo=new THREE.BoxGeometry(1.72,0.08,0.9);
-    const tMesh=new THREE.Mesh(tGeo,mat);
-    grp.add(tMesh);
-    this._makeClickable(tMesh,'trunk');
-
-    return grp;
-  },
-
-  _buildWing(mat, blackMat){
-    const grp=new THREE.Group();
-
-    const wingGeo=new THREE.BoxGeometry(1.62,0.08,0.4);
-    const wingMesh=new THREE.Mesh(wingGeo,mat);
-    grp.add(wingMesh);
-
-    // wing supports
-    for(let s of[-1,1]){
-      const supGeo=new THREE.BoxGeometry(0.06,0.18,0.12);
-      const supMesh=new THREE.Mesh(supGeo,blackMat);
-      supMesh.position.set(s*0.65,-0.12,0);
-      grp.add(supMesh);
-    }
-    return grp;
-  },
-
-  buildWheels(){
-    const wheelMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.8,metalness:0.1});
-    const rimMat=new THREE.MeshStandardMaterial({color:0xc8c8c8,roughness:0.2,metalness:0.95});
-    const brakeMat=new THREE.MeshStandardMaterial({color:0xffcc00,roughness:0.4,metalness:0.3});
-    const rotorMat=new THREE.MeshStandardMaterial({color:0x444444,roughness:0.6,metalness:0.8});
-
-    const positions=[
-      [-0.97,0.3,1.5,'wheel_fl'],
-      [0.97,0.3,1.5,'wheel_fr'],
-      [-0.97,0.3,-1.4,'wheel_rl'],
-      [0.97,0.3,-1.4,'wheel_rr']
-    ];
-
-    positions.forEach(([x,y,z,partId])=>{
-      const wGrp=new THREE.Group();
-      wGrp.position.set(x,y,z);
-
-      // Tire
-      const tGeo=new THREE.TorusGeometry(0.28,0.1,12,40);
-      const tMesh=new THREE.Mesh(tGeo,wheelMat);
-      tMesh.rotation.y=Math.PI/2;
-      wGrp.add(tMesh);
-
-      // Rim
-      const rGeo=new THREE.CylinderGeometry(0.22,0.22,0.08,24);
-      const rMesh=new THREE.Mesh(rGeo,rimMat);
-      rMesh.rotation.x=Math.PI/2;
-      wGrp.add(rMesh);
-      this._makeClickable(rMesh,partId);
-
-      // Spokes
-      for(let i=0;i<5;i++){
-        const sGeo=new THREE.BoxGeometry(0.04,0.18,0.06);
-        const sMesh=new THREE.Mesh(sGeo,rimMat);
-        sMesh.rotation.z=i*(Math.PI*2/5);
-        sMesh.rotation.y=Math.PI/2;
-        sMesh.position.set(x<0?-0.015:0.015,0,0);
-        wGrp.add(sMesh);
-      }
-
-      // Brake rotor
-      const rotGeo=new THREE.CylinderGeometry(0.19,0.19,0.025,24);
-      const rotMesh=new THREE.Mesh(rotGeo,rotorMat);
-      rotMesh.rotation.x=Math.PI/2;
-      rotMesh.position.set(x<0?0.06:-0.06,0,0);
-      wGrp.add(rotMesh);
-      this._makeClickable(rotMesh,partId.includes('fl')||partId.includes('fr')?'brake_fl':'brake_rl');
-
-      // Caliper
-      const calGeo=new THREE.BoxGeometry(0.1,0.1,0.22);
-      const calMesh=new THREE.Mesh(calGeo,brakeMat);
-      calMesh.position.set(x<0?0.07:-0.07,0.14,0);
-      wGrp.add(calMesh);
-      brakeCalipersAll.push(calMesh);
-
-      // Lug nuts
-      for(let i=0;i<5;i++){
-        const ln=Math.PI*2*i/5;
-        const lgGeo=new THREE.CylinderGeometry(0.015,0.015,0.04,8);
-        const lgMesh=new THREE.Mesh(lgGeo,new THREE.MeshStandardMaterial({color:0x888888,metalness:1,roughness:0.2}));
-        lgMesh.rotation.x=Math.PI/2;
-        lgMesh.position.set(x<0?-0.05:0.05,Math.sin(ln)*0.14,Math.cos(ln)*0.14);
-        wGrp.add(lgMesh);
-      }
-
-      wheels.push(wGrp);
-      carGroup.add(wGrp);
-    });
-  },
-
-  buildInterior(){
-    const leatherMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.7,metalness:0.0});
-    const alcantaraMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.9,metalness:0.0});
-    const carbonMat=new THREE.MeshStandardMaterial({color:0x0d0d0d,roughness:0.3,metalness:0.5});
-    const screenMat=new THREE.MeshStandardMaterial({color:0x003366,emissive:0x0044aa,emissiveIntensity:0.6,roughness:0.1,metalness:0.2});
-    const aluminumMat=new THREE.MeshStandardMaterial({color:0xaaaaaa,roughness:0.3,metalness:0.9});
-
-    interiorMeshes.push(leatherMat,alcantaraMat);
-
-    // DASHBOARD
-    const dashGeo=new THREE.BoxGeometry(1.5,0.26,0.52);
-    const dashMesh=new THREE.Mesh(dashGeo,leatherMat);
-    dashMesh.position.set(0,0.72,0.58);
-    carGroup.add(dashMesh);
-    interiorMeshes.push(dashMesh);
-    this._makeClickable(dashMesh,'dashboard');
-
-    // MAIN SCREEN
-    const scrGeo=new THREE.BoxGeometry(0.8,0.22,0.02);
-    const scrMesh=new THREE.Mesh(scrGeo,screenMat);
-    scrMesh.position.set(0.18,0.82,0.35);
-    scrMesh.rotation.x=-0.2;
-    carGroup.add(scrMesh);
-    interiorMeshes.push(scrMesh);
-
-    // CLUSTER
-    const clsGeo=new THREE.BoxGeometry(0.42,0.18,0.02);
-    const clsMat=new THREE.MeshStandardMaterial({color:0x001133,emissive:0x0088ff,emissiveIntensity:0.5,roughness:0.1});
-    const clsMesh=new THREE.Mesh(clsGeo,clsMat);
-    clsMesh.position.set(-0.36,0.86,0.35);
-    clsMesh.rotation.x=-0.2;
-    carGroup.add(clsMesh);
-
-    // STEERING WHEEL
-    const swGrp=new THREE.Group();
-    swGrp.position.set(-0.4,0.74,0.3);
-    swGrp.rotation.x=-0.3;
-
-    const swRimGeo=new THREE.TorusGeometry(0.16,0.022,12,40);
-    const swMesh=new THREE.Mesh(swRimGeo,leatherMat);
-    swGrp.add(swMesh);
-    this._makeClickable(swMesh,'steeringwheel');
-
-    const swHubGeo=new THREE.CylinderGeometry(0.06,0.06,0.04,16);
-    const swHubMesh=new THREE.Mesh(swHubGeo,carbonMat);
-    swHubMesh.rotation.x=Math.PI/2;
-    swGrp.add(swHubMesh);
-
-    // spokes
-    for(let i=0;i<3;i++){
-      const spkGeo=new THREE.BoxGeometry(0.018,0.13,0.02);
-      const spkMesh=new THREE.Mesh(spkGeo,carbonMat);
-      spkMesh.rotation.z=i*(Math.PI*2/3)+Math.PI/6;
-      swGrp.add(spkMesh);
-    }
-    carGroup.add(swGrp);
-
-    // SEATS
-    for(let s of[-1,1]){
-      const seatGrp=new THREE.Group();
-      seatGrp.position.set(s*0.35,0.22,-0.15);
-
-      // seat base
-      const sbGeo=new THREE.BoxGeometry(0.52,0.12,0.54);
-      const sbMesh=new THREE.Mesh(sbGeo,leatherMat);
-      seatGrp.add(sbMesh);
-      this._makeClickable(sbMesh,'seat');
-
-      // seat back
-      const skGeo=new THREE.BoxGeometry(0.52,0.68,0.1);
-      const skMesh=new THREE.Mesh(skGeo,leatherMat);
-      skMesh.position.set(0,0.4,-0.22);
-      skMesh.rotation.x=0.1;
-      seatGrp.add(skMesh);
-
-      // headrest
-      const hrGeo=new THREE.BoxGeometry(0.28,0.2,0.1);
-      const hrMesh=new THREE.Mesh(hrGeo,leatherMat);
-      hrMesh.position.set(0,0.8,-0.22);
-      seatGrp.add(hrMesh);
-
-      interiorMeshes.push(sbMesh,skMesh,hrMesh);
-      carGroup.add(seatGrp);
-    }
-
-    // CENTER CONSOLE
-    const ccGeo=new THREE.BoxGeometry(0.22,0.22,0.9);
-    const ccMesh=new THREE.Mesh(ccGeo,leatherMat);
-    ccMesh.position.set(0,0.28,-0.1);
-    carGroup.add(ccMesh);
-    interiorMeshes.push(ccMesh);
-
-    // GEAR SELECTOR
-    const gsGeo=new THREE.CylinderGeometry(0.03,0.03,0.14,12);
-    const gsMesh=new THREE.Mesh(gsGeo,aluminumMat);
-    gsMesh.position.set(0,0.42,0.18);
-    carGroup.add(gsMesh);
-
-    // PEDALS
-    for(let i=0;i<3;i++){
-      const pedGeo=new THREE.BoxGeometry(0.08,0.02,0.14);
-      const pedMesh=new THREE.Mesh(pedGeo,aluminumMat);
-      pedMesh.position.set(-0.38-i*0.1,0.14,0.6);
-      pedMesh.rotation.x=0.3;
-      carGroup.add(pedMesh);
-    }
-
-    // AMBIENT LIGHT STRIPS
-    const ambGeo=new THREE.BoxGeometry(0.8,0.01,0.02);
-    const ambMat2=new THREE.MeshStandardMaterial({color:0x6600ff,emissive:0x6600ff,emissiveIntensity:0,roughness:0.5});
-    const ambMesh=new THREE.Mesh(ambGeo,ambMat2);
-    ambMesh.position.set(0,0.42,0.62);
-    carGroup.add(ambMesh);
-    envLights.push({mesh:ambMesh,mat:ambMat2});
-  },
-
-  buildEngine(){
-    const alMat=new THREE.MeshStandardMaterial({color:0x888888,roughness:0.5,metalness:0.8});
-    const darkMat=new THREE.MeshStandardMaterial({color:0x222222,roughness:0.6,metalness:0.4});
-    const pipeMat=new THREE.MeshStandardMaterial({color:0x555555,roughness:0.4,metalness:0.9});
-    const hotMat=new THREE.MeshStandardMaterial({color:0x993300,roughness:0.3,metalness:0.6,emissive:0x331100,emissiveIntensity:0.3});
-
-    const engineGrp=new THREE.Group();
-    engineGrp.position.set(0,0.28,-1.5);
-
-    // Engine block
-    const ebGeo=new THREE.BoxGeometry(0.82,0.38,0.52);
-    const ebMesh=new THREE.Mesh(ebGeo,alMat);
-    engineGrp.add(ebMesh);
-    this._makeClickable(ebMesh,'engine');
-
-    // Turbos
-    for(let s of[-1,1]){
-      const tbGeo=new THREE.SphereGeometry(0.1,12,8);
-      const tbMesh=new THREE.Mesh(tbGeo,alMat);
-      tbMesh.position.set(s*0.55,0.1,0);
-      engineGrp.add(tbMesh);
-      this._makeClickable(tbMesh,'turbo');
-
-      // intake pipe
-      const ipGeo=new THREE.CylinderGeometry(0.04,0.04,0.5,12);
-      const ipMesh=new THREE.Mesh(ipGeo,pipeMat);
-      ipMesh.rotation.z=Math.PI/2;
-      ipMesh.position.set(s*0.55,0.1,-0.25);
-      engineGrp.add(ipMesh);
-    }
-
-    // Exhaust headers
-    exhaustGroup=new THREE.Group();
-    for(let s of[-1,1]){
-      for(let i=0;i<3;i++){
-        const exGeo=new THREE.CylinderGeometry(0.025,0.025,0.6,8);
-        const exMesh=new THREE.Mesh(exGeo,hotMat);
-        exMesh.rotation.x=0.4;
-        exMesh.position.set(s*0.12+(s*i*0.12),0,-0.3-i*0.08);
-        exhaustGroup.add(exMesh);
-      }
-    }
-
-    // Exhaust tips
-    for(let s of[-1,1]){
-      const etGeo=new THREE.CylinderGeometry(0.04,0.05,0.2,12);
-      const etMesh=new THREE.Mesh(etGeo,new THREE.MeshStandardMaterial({color:0x333333,metalness:0.9,roughness:0.2}));
-      etMesh.rotation.x=Math.PI/2;
-      etMesh.position.set(s*0.4,0.2,-2.06);
-      carGroup.add(etMesh);
-      this._makeClickable(etMesh,'exhaust');
-
-      // Flame (hidden by default)
-      const flameGeo=new THREE.ConeGeometry(0.04,0.2,8);
-      const flameMat=new THREE.MeshStandardMaterial({color:0xff6600,emissive:0xff3300,emissiveIntensity:2,transparent:true,opacity:0.85});
-      const flameMesh=new THREE.Mesh(flameGeo,flameMat);
-      flameMesh.rotation.x=-Math.PI/2;
-      flameMesh.position.set(s*0.4,0.2,-2.28);
-      flameMesh.visible=false;
-      exhaustGroup.add(flameMesh);
-      carGroup.add(etMesh);
-    }
-
-    carGroup.add(exhaustGroup);
-
-    // Suspension arms
-    for(let side of[-1,1]){
-      for(let front of[1,-1]){
-        const susGeo=new THREE.CylinderGeometry(0.018,0.018,0.6,8);
-        const susMesh=new THREE.Mesh(susGeo,alMat);
-        susMesh.rotation.z=Math.PI/2;
-        susMesh.position.set(side*0.6,0.06,front*1.3);
-        carGroup.add(susMesh);
-        this._makeClickable(susMesh,'suspension');
-      }
-    }
-
-    engineGrp.add(exhaustGroup);
-    carGroup.add(engineGrp);
-  },
-
-  buildLights(){
-    // HEADLIGHTS
-    for(let s of[-1,1]){
-      const hlGrp=new THREE.Group();
-      hlGrp.position.set(s*0.52,0.52,2.02);
-
-      const hlGeo=new THREE.BoxGeometry(0.36,0.16,0.04);
-      const hlMat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:0,roughness:0.05,metalness:0.2,transparent:true,opacity:0.92});
-      const hlMesh=new THREE.Mesh(hlGeo,hlMat);
-      hlGrp.add(hlMesh);
-      headlightMeshes.push(hlMesh);
-      this._makeClickable(hlMesh,'headlight');
-
-      // DRL strip
-      const drlGeo=new THREE.BoxGeometry(0.3,0.03,0.03);
-      const drlMat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:0,roughness:0.1});
-      const drlMesh=new THREE.Mesh(drlGeo,drlMat);
-      drlMesh.position.y=-0.1;
-      hlGrp.add(drlMesh);
-      drlMeshes.push(drlMesh);
-
-      carGroup.add(hlGrp);
-
-      // Actual light (Three.js SpotLight)
-      const spot=new THREE.SpotLight(0xffffff,0,8,0.4,0.3);
-      spot.position.set(s*0.52,0.52,2.2);
-      spot.target.position.set(s*0.4,0,6);
-      scene.add(spot);
-      scene.add(spot.target);
-      spotLights.push(spot);
-    }
-
-    // TAILLIGHTS
-    for(let s of[-1,1]){
-      const tlGeo=new THREE.BoxGeometry(0.48,0.12,0.04);
-      const tlMat=new THREE.MeshStandardMaterial({color:0xcc0000,emissive:0xcc0000,emissiveIntensity:0.4,roughness:0.1,transparent:true,opacity:0.9});
-      const tlMesh=new THREE.Mesh(tlGeo,tlMat);
-      tlMesh.position.set(s*0.42,0.56,-2.03);
-      carGroup.add(tlMesh);
-      taillightMeshes.push(tlMesh);
-      this._makeClickable(tlMesh,'taillight');
-    }
-
-    // TAIL LIGHT BAR (OLED strip across)
-    const tlBarGeo=new THREE.BoxGeometry(1.4,0.04,0.02);
-    const tlBarMat=new THREE.MeshStandardMaterial({color:0xff2200,emissive:0xff2200,emissiveIntensity:0.8,roughness:0.1});
-    const tlBarMesh=new THREE.Mesh(tlBarGeo,tlBarMat);
-    tlBarMesh.position.set(0,0.58,-2.03);
-    carGroup.add(tlBarMesh);
-    taillightMeshes.push(tlBarMesh);
-  },
-
-  buildEnvironment(){
-    ConfiguratorManager.setEnv('showroom',null);
-  },
-
-  buildGround(){
-    const gGeo=new THREE.PlaneGeometry(40,40,1,1);
-    const gMat=new THREE.MeshStandardMaterial({
-      color:0x111114,roughness:0.12,metalness:0.7,
-      envMapIntensity:1.2
-    });
-    floorMesh=new THREE.Mesh(gGeo,gMat);
-    floorMesh.rotation.x=-Math.PI/2;
-    floorMesh.receiveShadow=true;
-    scene.add(floorMesh);
-
-    // Reflection plane lines
-    for(let i=-4;i<=4;i++){
-      const lineGeo=new THREE.PlaneGeometry(40,0.01);
-      const lineMat=new THREE.MeshBasicMaterial({color:0x222230,transparent:true,opacity:0.4});
-      const lineMesh=new THREE.Mesh(lineGeo,lineMat);
-      lineMesh.rotation.x=-Math.PI/2;
-      lineMesh.position.set(i*2,0.001,0);
-      lineMesh.rotation.z=Math.PI/2;
-      scene.add(lineMesh);
-    }
-  },
-
-  buildParticles(){
-    if(qualityLevel==='low') return;
-    const count=300;
-    const geo=new THREE.BufferGeometry();
-    particlePositions=new Float32Array(count*3);
-    for(let i=0;i<count;i++){
-      particlePositions[i*3]=(Math.random()-0.5)*20;
-      particlePositions[i*3+1]=Math.random()*6;
-      particlePositions[i*3+2]=(Math.random()-0.5)*20;
-    }
-    geo.setAttribute('position',new THREE.BufferAttribute(particlePositions,3));
-    const pMat=new THREE.PointsMaterial({color:0xffffff,size:0.02,transparent:true,opacity:0.3});
-    particleSystem=new THREE.Points(geo,pMat);
-    scene.add(particleSystem);
-  },
-
-  _makeClickable(mesh, partId){
-    mesh.userData.partId=partId;
-    clickableObjects.push(mesh);
-  },
-
-  update(dt){
-    // Explode mode
-    if(Math.abs(explodeAmt-explodeTarget)>0.001){
-      explodeAmt+=(explodeTarget-explodeAmt)*dt*3;
-      this._applyExplode();
-    }
-
-    // Engine animation
-    if(engineStarted){
-      engineAnimT+=dt;
-    }
-
-    // particles drift
-    if(particleSystem && particlePositions){
-      for(let i=0;i<particlePositions.length;i+=3){
-        particlePositions[i+1]+=dt*0.05;
-        if(particlePositions[i+1]>6) particlePositions[i+1]=0;
-      }
-      particleSystem.geometry.attributes.position.needsUpdate=true;
-    }
-  },
-
-  _applyExplode(){
-    const e=explodeAmt;
-    if(doorL) doorL.position.x=-0.97-e*1.2;
-    if(doorR) doorR.position.x=0.97+e*1.2;
-    if(hoodMesh) hoodMesh.position.y=0.58+e*1.5;
-    if(trunkMesh) trunkMesh.position.y=0.58+e*1.5;
-    if(wingMesh) wingMesh.position.y=1.18+e*1.2;
-    wheels.forEach((w,i)=>{
-      if(!w) return;
-      const dirs=[-1,1,-1,1];
-      w.position.x=(Math.abs(w.position.x)/w.position.x)*(Math.abs(w.position.x)+e*1.0);
-      w.position.y=0.3+e*0.2;
     });
   }
-};
 
-// =====================================================================
-//  MATERIAL MANAGER
-// =====================================================================
-const MaterialManager = {
-  init(){
-    this.body = new THREE.MeshStandardMaterial({
-      color:0x0a0a0a,
-      roughness:0.12,
-      metalness:0.85,
-      envMapIntensity:1.5,
-    });
-    this.glass = new THREE.MeshPhysicalMaterial({
-      color:0x88aacc,
-      metalness:0,
-      roughness:0,
-      transmission:0.9,
-      thickness:0.5,
-      transparent:true,
-      opacity:0.35,
-      side:THREE.DoubleSide,
-    });
-    this.chrome = new THREE.MeshStandardMaterial({color:0xdddddd,roughness:0.05,metalness:1.0});
-    this.black = new THREE.MeshStandardMaterial({color:0x111111,roughness:0.8,metalness:0.1});
-    this.rubber = new THREE.MeshStandardMaterial({color:0x0d0d0d,roughness:0.95,metalness:0.0});
+  // Load sounds
+  const soundPromises = [
+    loadSound('startup', 'https://cdn.jsdelivr.net/gh/DeepAI-Models/CarSounds/startup.mp3'),
+    loadSound('engineIdle', 'https://cdn.jsdelivr.net/gh/DeepAI-Models/CarSounds/engine_idle.mp3'),
+    loadSound('rev', 'https://cdn.jsdelivr.net/gh/DeepAI-Models/CarSounds/rev.mp3'),
+    loadSound('doorClose', 'https://cdn.jsdelivr.net/gh/DeepAI-Models/CarSounds/door_close.mp3'),
+    loadSound('ambientMusic', 'https://cdn.jsdelivr.net/gh/DeepAI-Models/CarSounds/ambient.mp3')
+  ];
 
-    // Ambient env
-    const ambLight=new THREE.AmbientLight(0x222244,0.4);
-    scene.add(ambLight);
+  // For demonstration, use placeholder sounds if CDN not available
+  Promise.all(soundPromises).then(([startupSound, engineIdle, revSound, doorClose, ambientMusic]) => {
+    sounds.startup = startupSound;
+    sounds.engineIdle = engineIdle;
+    sounds.rev = revSound;
+    sounds.doorClose = doorClose;
+    sounds.ambientMusic = ambientMusic;
+    init();
+  }).catch(() => {
+    // fallback to empty sounds
+    sounds.startup = { play: ()=>{}, stop: ()=>{} };
+    sounds.engineIdle = { play: ()=>{}, stop: ()=>{} };
+    sounds.rev = { play: ()=>{}, stop: ()=>{} };
+    sounds.doorClose = { play: ()=>{}, stop: ()=>{} };
+    sounds.ambientMusic = { play: ()=>{}, stop: ()=>{} };
+    init();
+  });
 
-    const hemi=new THREE.HemisphereLight(0x334466,0x111111,0.5);
-    scene.add(hemi);
-  },
-  setBodyColor(hex){
-    this.body.color.setHex(hex);
-    this.body.needsUpdate=true;
-  },
-  setInteriorColor(hex){
-    interiorMeshes.forEach(m=>{
-      if(m.isMaterial) m.color.setHex(hex);
-      else if(m.material) m.material.color.setHex(hex);
-    });
+  let isMuted = false;
+
+  // =================== INITIALIZE ===================
+  function init() {
+    // Play startup sound
+    if(sounds.startup) { sounds.startup.play(); }
+
+    // Animate loading bar
+    let loadProgress = 0;
+    loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+      loadProgress = itemsLoaded / itemsTotal;
+      showLoadingProgress(loadProgress);
+    };
+
+    loadingManager.onLoad = () => {
+      // Finish loading
+      showLoadingProgress(1);
+      setTimeout(()=> {
+        loadingScreen.style.display='none';
+        startCinematic();
+      }, 500);
+    };
+
+    // Animate the loading bar to 100%
+    // (already handled via onProgress)
   }
-};
 
-// =====================================================================
-//  CAMERA MANAGER
-// =====================================================================
-const CameraManager = {
-  init(){
-    camera=new THREE.PerspectiveCamera(55,window.innerWidth/window.innerHeight,0.05,200);
-    camera.position.set(0,2,8);
-    camera.lookAt(0,0.5,0);
-    this._updateOrbit();
-  },
-  update(dt){
-    if(cinematicActive){
-      this._updateCinematic(dt);
-      return;
-    }
-    if(currentMode==='cockpit'){
-      // gyro look
-      if(gyroEnabled){
-        camera.rotation.y+=(gyroAlpha-camera.rotation.y)*0.1;
-        camera.rotation.x+=(gyroBeta-camera.rotation.x)*0.1;
-      }
-      return;
-    }
-    // Smooth orbit
-    orbitTheta+=(targetTheta-orbitTheta)*0.08;
-    orbitPhi+=(targetPhi-orbitPhi)*0.08;
-    orbitRadius+=(targetRadius-orbitRadius)*0.08;
-    this._updateOrbit();
-  },
-  _updateOrbit(){
-    const x=orbitRadius*Math.sin(orbitTheta)*Math.cos(orbitPhi);
-    const y=orbitRadius*Math.sin(orbitPhi)+0.3;
-    const z=orbitRadius*Math.cos(orbitTheta)*Math.cos(orbitPhi);
-    camera.position.set(x,Math.max(0.2,y),z);
-    camera.lookAt(0,0.5,0);
-  },
-  goToCockpit(){
-    cockpitActive=true;
-    gsap.to(camera.position,{x:-0.4,y:0.86,z:0.1,duration:1.2,ease:'power2.inOut'});
-    gsap.to({},{duration:1.2,onUpdate:()=>camera.lookAt(0,0.85,2.5)});
-  },
-  goToOrbit(){
-    cockpitActive=false;
-    targetTheta=0.6; targetPhi=0.35; targetRadius=7;
-  },
-  startCinematic(){
-    cinematicActive=true;
-    cinematicT=0;
-    // Path: headlight → orbit rear → cockpit → pullback reveal
-    cinematicPath=[
-      {pos:[0.6,0.6,2.4],look:[0,0.5,0],t:0},
-      {pos:[-3,1.5,3],look:[0,0.5,0],t:1.2},
-      {pos:[-4,2,-2],look:[0,0.5,0],t:2.5},
-      {pos:[-0.4,0.88,0.12],look:[0,0.85,2.5],t:3.8},
-      {pos:[0,1.8,9],look:[0,0.4,0],t:5.5},
-    ];
-    document.getElementById('btnCinema')?.classList.add('active');
-  },
-  _updateCinematic(dt){
-    cinematicT+=dt*0.7;
-    const path=cinematicPath;
-    if(!path||cinematicT>8){
-      cinematicActive=false;
-      document.getElementById('btnCinema')?.classList.remove('active');
-      currentMode='orbit';
-      return;
-    }
-    // Interpolate along path
-    let segIdx=0;
-    for(let i=0;i<path.length-1;i++){
-      if(cinematicT>=path[i].t && cinematicT<path[i+1].t) segIdx=i;
-    }
-    const a=path[segIdx],b=path[Math.min(segIdx+1,path.length-1)];
-    const segLen=b.t-a.t;
-    const t2=segLen>0?Math.min((cinematicT-a.t)/segLen,1):1;
-    const ease=t2<0.5?2*t2*t2:1-Math.pow(-2*t2+2,2)/2;
-    camera.position.set(
-      a.pos[0]+(b.pos[0]-a.pos[0])*ease,
-      a.pos[1]+(b.pos[1]-a.pos[1])*ease,
-      a.pos[2]+(b.pos[2]-a.pos[2])*ease
-    );
-    camera.lookAt(
-      a.look[0]+(b.look[0]-a.look[0])*ease,
-      a.look[1]+(b.look[1]-a.look[1])*ease,
-      a.look[2]+(b.look[2]-a.look[2])*ease
-    );
+  // =================== CINEMATIC INTRO ===================
+  function startCinematic() {
+    cinematicOverlay.classList.remove('hidden');
+    // Animate camera over headlights, rear wing, interior
+    // For demo, just delay and then fade out
+    setTimeout(()=> {
+      cinematicOverlay.classList.add('hidden');
+      setTimeout(()=> {
+        // End cinematic
+        controls.current='orbit';
+        animate();
+      }, 1000);
+    }, 3000);
   }
-};
 
-// =====================================================================
-//  INPUT MANAGER
-// =====================================================================
-const InputManager = {
-  init(){
-    const c=renderer.domElement;
-    c.addEventListener('touchstart',this.onTouchStart.bind(this),{passive:false});
-    c.addEventListener('touchmove',this.onTouchMove.bind(this),{passive:false});
-    c.addEventListener('touchend',this.onTouchEnd.bind(this),{passive:false});
-    c.addEventListener('mousedown',this.onMouseDown.bind(this));
-    c.addEventListener('mousemove',this.onMouseMove.bind(this));
-    c.addEventListener('mouseup',this.onMouseUp.bind(this));
-    c.addEventListener('wheel',this.onWheel.bind(this),{passive:true});
-    c.addEventListener('click',this.onClick.bind(this));
-    window.addEventListener('keydown',this.onKey.bind(this));
+  // =================== EVENT HANDLERS ===================
+  window.addEventListener('resize', ()=> {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
 
-    if(window.DeviceOrientationEvent){
-      window.addEventListener('deviceorientation',e=>{
-        if(!gyroEnabled) return;
-        gyroAlpha=(e.alpha||0)*Math.PI/180;
-        gyroBeta=((e.beta||0)-40)*Math.PI/180*0.5;
-      });
+  document.getElementById('fullscreenBtn').onclick= ()=> {
+    if(!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
     }
-
-    // drive throttle touch overlay
-    document.body.addEventListener('touchstart',e=>{
-      if(driveMode && e.touches.length===1){
-        driveThrottle=0.8;
-        AudioManager.revEngine();
-      }
-    },{passive:true});
-    document.body.addEventListener('touchend',e=>{
-      if(driveMode){ driveThrottle=0; }
-    },{passive:true});
-  },
-  _drag:false,_lx:0,_ly:0,
-  onMouseDown(e){this._drag=true;this._lx=e.clientX;this._ly=e.clientY;},
-  onMouseUp(){this._drag=false;},
-  onMouseMove(e){
-    if(!this._drag||currentMode==='cockpit'||cinematicActive) return;
-    const dx=e.clientX-this._lx, dy=e.clientY-this._ly;
-    targetTheta-=dx*0.008;
-    targetPhi-=dy*0.005;
-    targetPhi=Math.max(0.05,Math.min(Math.PI*0.45,targetPhi));
-    this._lx=e.clientX;this._ly=e.clientY;
-  },
-  onWheel(e){targetRadius=Math.max(2.5,Math.min(14,targetRadius+e.deltaY*0.005));},
-  onClick(e){
-    if(Math.abs(e.clientX-this._lx)>4||Math.abs(e.clientY-this._ly)>4) return;
-    const rect=renderer.domElement.getBoundingClientRect();
-    mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
-    mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
-    this._doRaycast();
-  },
-  _t0:{},
-  onTouchStart(e){
-    e.preventDefault();
-    [...e.changedTouches].forEach(t=>{ this._t0[t.identifier]={x:t.clientX,y:t.clientY}; });
-    if(e.touches.length===2){
-      const dx=e.touches[0].clientX-e.touches[1].clientX;
-      const dy=e.touches[0].clientY-e.touches[1].clientY;
-      touchStartDist=Math.hypot(dx,dy);
-    }
-  },
-  onTouchMove(e){
-    e.preventDefault();
-    if(e.touches.length===1 && !cinematicActive){
-      const t=e.touches[0];
-      const p=this._t0[t.identifier];
-      if(!p) return;
-      const dx=t.clientX-p.x, dy=t.clientY-p.y;
-      if(currentMode==='cockpit'){
-        camera.rotation.y-=dx*0.003;
-        camera.rotation.x-=dy*0.003;
-        camera.rotation.x=Math.max(-0.8,Math.min(0.8,camera.rotation.x));
+  };
+  document.getElementById('muteBtn').onclick= ()=> {
+    isMuted = !isMuted;
+    for(let key in sounds) {
+      if(sounds[key].setMute) {
+        sounds[key].setMute(isMuted);
       } else {
-        targetTheta-=dx*0.008;
-        targetPhi-=dy*0.005;
-        targetPhi=Math.max(0.05,Math.min(Math.PI*0.45,targetPhi));
-      }
-      this._t0[t.identifier]={x:t.clientX,y:t.clientY};
-    } else if(e.touches.length===2){
-      const dx=e.touches[0].clientX-e.touches[1].clientX;
-      const dy=e.touches[0].clientY-e.touches[1].clientY;
-      const dist=Math.hypot(dx,dy);
-      targetRadius*=touchStartDist/dist;
-      targetRadius=Math.max(2.5,Math.min(14,targetRadius));
-      touchStartDist=dist;
-    }
-  },
-  onTouchEnd(e){
-    [...e.changedTouches].forEach(t=>{ delete this._t0[t.identifier]; });
-    // tap = click
-    if(e.changedTouches.length===1){
-      const t=e.changedTouches[0];
-      const p0=this._t0[t.identifier]||{x:t.clientX,y:t.clientY};
-      if(Math.abs(t.clientX-(p0.x||t.clientX))<8 && Math.abs(t.clientY-(p0.y||t.clientY))<8){
-        const rect=renderer.domElement.getBoundingClientRect();
-        mouse.x=((t.clientX-rect.left)/rect.width)*2-1;
-        mouse.y=-((t.clientY-rect.top)/rect.height)*2+1;
-        this._doRaycast();
+        // fallback
+        if(isMuted) {
+          sounds[key].pause();
+        } else {
+          sounds[key].play();
+        }
       }
     }
-  },
-  _doRaycast(){
-    raycaster.setFromCamera(mouse,camera);
-    const hits=raycaster.intersectObjects(clickableObjects,true);
-    if(hits.length>0){
-      let obj=hits[0].object;
-      while(obj && !obj.userData.partId) obj=obj.parent;
-      if(obj && obj.userData.partId){
-        const partId=obj.userData.partId;
-        const info=PARTS_DB[partId];
-        if(info) UIManager.showInfo(info);
-      }
-    }
-  },
-  onKey(e){
-    switch(e.key.toLowerCase()){
-      case 'w': driveThrottle=1; break;
-      case 's': driveThrottle=-0.5; break;
-      case 'a': driveWheelAngle=-0.5; break;
-      case 'd': driveWheelAngle=0.5; break;
-      case 'r': ConfiguratorManager.toggleDoor('left'); break;
-      case 'h': ConfiguratorManager.toggleHood(); break;
-      case 'l': ConfiguratorManager.toggleHeadlights(); break;
-      case 'c': CameraManager.startCinematic(); break;
-      case 'f': AppManager.setMode('orbit'); break;
-      case 'm': AudioManager.toggleMute(); break;
-      case 'g': gyroEnabled=!gyroEnabled; UIManager.toast(gyroEnabled?'GYRO ON':'GYRO OFF'); break;
-    }
-  }
-};
-
-// =====================================================================
-//  UI MANAGER
-// =====================================================================
-const UIManager = {
-  init(){
-    document.getElementById('btnAudio').addEventListener('click',AudioManager.toggleMute.bind(AudioManager));
-    document.getElementById('btnFS').addEventListener('click',()=>{
-      if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-      else document.exitFullscreen?.();
-    });
-  },
-  cfgTab(id,el){
-    document.querySelectorAll('.cfg-tab').forEach(t=>t.classList.remove('active'));
-    document.querySelectorAll('.cfg-panel').forEach(p=>p.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('panel-'+id)?.classList.add('active');
-  },
-  toggleConfigurator(){
-    const c=document.getElementById('configurator');
-    c.classList.toggle('hidden');
-    document.getElementById('btnCfg')?.classList.toggle('active');
-  },
-  showInfo(info){
-    document.getElementById('ip-name').textContent=info.name;
-    document.getElementById('ip-func').textContent=info.func;
-    document.getElementById('ip-mat').textContent=info.mat;
-    document.getElementById('ip-sys').textContent=info.sys;
-    document.getElementById('ip-desc').textContent=info.desc;
-    document.getElementById('infopanel').classList.add('visible');
-  },
-  hideInfo(){
-    document.getElementById('infopanel').classList.remove('visible');
-  },
-  toast(msg,dur=2000){
-    const t=document.getElementById('toast');
-    t.textContent=msg;
-    t.classList.add('show');
-    clearTimeout(t._tid);
-    t._tid=setTimeout(()=>t.classList.remove('show'),dur);
-  }
-};
-
-// =====================================================================
-//  AUDIO MANAGER
-// =====================================================================
-const AudioManager = {
-  init(){
-    try{
-      audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-    }catch(e){console.warn('Web Audio unavailable');}
-  },
-  _ensureCtx(){
-    if(audioCtx && audioCtx.state==='suspended') audioCtx.resume();
-  },
-  playStartup(){
-    this._ensureCtx();
-    if(!audioCtx||muted) return;
-    // startup sweep
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    osc.connect(gain);gain.connect(audioCtx.destination);
-    osc.frequency.setValueAtTime(80,audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(400,audioCtx.currentTime+0.8);
-    gain.gain.setValueAtTime(0,audioCtx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.12,audioCtx.currentTime+0.1);
-    gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+1.2);
-    osc.start();osc.stop(audioCtx.currentTime+1.3);
-  },
-  revEngine(){
-    this._ensureCtx();
-    if(!audioCtx||muted) return;
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    const filter=audioCtx.createBiquadFilter();
-    filter.type='bandpass';filter.frequency.value=300;filter.Q.value=2;
-    osc.connect(filter);filter.connect(gain);gain.connect(audioCtx.destination);
-    osc.type='sawtooth';
-    osc.frequency.setValueAtTime(80,audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(220+driveSpeed*60,audioCtx.currentTime+0.3);
-    gain.gain.setValueAtTime(0,audioCtx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.08,audioCtx.currentTime+0.05);
-    gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.6);
-    osc.start();osc.stop(audioCtx.currentTime+0.7);
-  },
-  playClick(){
-    this._ensureCtx();
-    if(!audioCtx||muted) return;
-    const buf=audioCtx.createBuffer(1,128,audioCtx.sampleRate);
-    const d=buf.getChannelData(0);
-    for(let i=0;i<128;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/128,3);
-    const src=audioCtx.createBufferSource();
-    const g=audioCtx.createGain();g.gain.value=0.3;
-    src.buffer=buf;src.connect(g);g.connect(audioCtx.destination);
-    src.start();
-  },
-  playDoorThud(){
-    this._ensureCtx();
-    if(!audioCtx||muted) return;
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    osc.connect(gain);gain.connect(audioCtx.destination);
-    osc.frequency.setValueAtTime(55,audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(30,audioCtx.currentTime+0.15);
-    gain.gain.setValueAtTime(0.2,audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.2);
-    osc.start();osc.stop(audioCtx.currentTime+0.25);
-  },
-  update(dt){
-    // idle hum when engine started
-    if(engineStarted && !muted && audioCtx && frameNum%180===0){
-      const osc=audioCtx.createOscillator();
-      const g=audioCtx.createGain();
-      osc.connect(g);g.connect(audioCtx.destination);
-      osc.type='sawtooth';osc.frequency.value=65;
-      g.gain.setValueAtTime(0.03,audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.8);
-      osc.start();osc.stop(audioCtx.currentTime+0.9);
-    }
-  },
-  toggleMute(){
-    muted=!muted;
-    const btn=document.getElementById('btnAudio');
-    btn.textContent=muted?'🔇':'🔊';
-    UIManager.toast(muted?'AUDIO OFF':'AUDIO ON');
-  }
-};
-
-// =====================================================================
-//  CONFIGURATOR MANAGER
-// =====================================================================
-const ConfiguratorManager = {
-  setColor(hex,name,el){
-    MaterialManager.setBodyColor(hex);
-    bodyColor=hex;
-    document.querySelectorAll('#panel-colors .color-swatch').forEach(s=>s.classList.remove('active'));
-    if(el) el.classList.add('active');
-    UIManager.toast(name.toUpperCase());
-    AudioManager.playClick();
-  },
-  setWheels(type,el){
-    document.querySelectorAll('#panel-wheels .cfg-option').forEach(s=>s.classList.remove('active'));
-    if(el) el.classList.add('active');
-    const colors={sport:0xc8c8c8,track:0xffffff,luxury:0x888855,carbon:0x111111};
-    wheels.forEach(wg=>{
-      wg.children.forEach(c=>{
-        if(c.geometry?.type==='CylinderGeometry') c.material.color.setHex(colors[type]||0xc8c8c8);
-      });
-    });
-    UIManager.toast(type.toUpperCase()+' WHEELS');
-    AudioManager.playClick();
-  },
-  setInterior(type,el){
-    document.querySelectorAll('#panel-interior .cfg-option').forEach(s=>s.classList.remove('active'));
-    if(el) el.classList.add('active');
-    const colors={black:0x111111,tan:0x886644,alcantara:0x221111,carbon:0x0d0d0d};
-    MaterialManager.setInteriorColor(colors[type]||0x111111);
-    UIManager.toast(type.toUpperCase()+' INTERIOR');
-    AudioManager.playClick();
-  },
-  setEnv(type,el){
-    document.querySelectorAll('#panel-env .cfg-option').forEach(s=>s.classList.remove('active'));
-    if(el) el.classList.add('active');
-    currentEnv=type;
-
-    // Remove old env lights/objects
-    showroomSpots.forEach(s=>scene.remove(s));
-    showroomSpots=[];
-    pointLights.forEach(l=>scene.remove(l));
-    pointLights=[];
-
-    if(type==='showroom'){
-      scene.background=new THREE.Color(0x0a0a10);
-      scene.fog=new THREE.FogExp2(0x0a0a10,0.04);
-      if(floorMesh) floorMesh.material.color.setHex(0x111114);
-      // Studio spots
-      const spotPositions=[[3,6,3,0xffffff,1.5],[−3,6,3,0xffffff,1.5],[0,6,-3,0x8888ff,1.0]];
-      [[3,6,3],[−3,6,3],[0,6,−3]].forEach((pos,i)=>{
-        const sp=new THREE.SpotLight([0xffffff,0xffffff,0x8888ff][i],[1.5,1.5,1.0],20,0.5,0.4);
-        sp.position.set(...pos);
-        sp.target.position.set(0,0,0);
-        sp.castShadow=qualityLevel==='high';
-        scene.add(sp);scene.add(sp.target);
-        showroomSpots.push(sp);
-      });
-      // Floor grid glow
-      const floorLight=new THREE.PointLight(0x2233ff,0.3,10);
-      floorLight.position.set(0,-0.5,0);
-      scene.add(floorLight);
-      pointLights.push(floorLight);
-    } else if(type==='mountain'){
-      scene.background=new THREE.Color(0x1a2a3a);
-      scene.fog=new THREE.FogExp2(0x1a2a3a,0.02);
-      if(floorMesh) floorMesh.material.color.setHex(0x222222);
-      const sun=new THREE.DirectionalLight(0xfff4cc,2.0);
-      sun.position.set(5,10,8);
-      sun.castShadow=true;
-      scene.add(sun);
-      showroomSpots.push(sun);
-      const fill=new THREE.HemisphereLight(0x88aacc,0x334411,0.6);
-      scene.add(fill);
-      showroomSpots.push(fill);
-    } else if(type==='city'){
-      scene.background=new THREE.Color(0x020408);
-      scene.fog=new THREE.FogExp2(0x020408,0.04);
-      if(floorMesh){ floorMesh.material.color.setHex(0x111118); floorMesh.material.roughness=0.05; }
-      // Neon point lights
-      [[3,2,3,0xff0066],[−3,2,3,0x0066ff],[0,3,-2,0xff6600]].forEach(([x,y,z,col])=>{
-        const pl=new THREE.PointLight(col,2,8);
-        pl.position.set(x,y,z);
-        scene.add(pl);
-        pointLights.push(pl);
-        showroomSpots.push(pl);
-      });
-    } else if(type==='track'){
-      scene.background=new THREE.Color(0x161616);
-      scene.fog=new THREE.FogExp2(0x161616,0.03);
-      if(floorMesh){ floorMesh.material.color.setHex(0x181818); floorMesh.material.roughness=0.9; }
-      const trackLight=new THREE.DirectionalLight(0xffffff,1.8);
-      trackLight.position.set(-5,12,5);
-      scene.add(trackLight);
-      showroomSpots.push(trackLight);
-    }
-
-    UIManager.toast && UIManager.toast(type.toUpperCase()+' ENVIRONMENT');
-    AudioManager.playClick && AudioManager.playClick();
-  },
-
-  toggleDoor(side){
-    if(side==='left'){
-      doorLOpen=!doorLOpen;
-      gsap.to(doorL.rotation,{y:doorLOpen?-Math.PI/2.8:0,duration:0.8,ease:'power2.inOut'});
-      AudioManager.playDoorThud();
-      UIManager.toast(doorLOpen?'DRIVER DOOR OPEN':'DRIVER DOOR CLOSED');
+  };
+  document.getElementById('vrBtn').onclick= ()=> {
+    if (renderer.xr.isPresenting) {
+      renderer.xr.getSession().end();
     } else {
-      doorROpen=!doorROpen;
-      gsap.to(doorR.rotation,{y:doorROpen?Math.PI/2.8:0,duration:0.8,ease:'power2.inOut'});
-      AudioManager.playDoorThud();
-      UIManager.toast(doorROpen?'PASS. DOOR OPEN':'PASS. DOOR CLOSED');
+      document.body.appendChild(vrButton.domElement);
+      renderer.xr.setSession( await navigator.xr.requestSession('immersive-vr') );
     }
-  },
-  toggleHood(){
-    hoodOpen=!hoodOpen;
-    gsap.to(hoodMesh.rotation,{x:hoodOpen?-Math.PI/2.5:0,duration:0.9,ease:'power2.inOut'});
-    AudioManager.playDoorThud();
-    UIManager.toast(hoodOpen?'HOOD OPEN':'HOOD CLOSED');
-  },
-  toggleTrunk(){
-    trunkOpen=!trunkOpen;
-    gsap.to(trunkMesh.rotation,{x:trunkOpen?Math.PI/3:0,duration:0.9,ease:'power2.inOut'});
-    AudioManager.playDoorThud();
-    UIManager.toast(trunkOpen?'TRUNK OPEN':'TRUNK CLOSED');
-  },
-  toggleWindows(){
-    windowsOpen=!windowsOpen;
-    UIManager.toast(windowsOpen?'WINDOWS DOWN':'WINDOWS UP');
-  },
-  toggleHeadlights(){
-    headlightsOn=!headlightsOn;
-    headlightMeshes.forEach(m=>m.material.emissiveIntensity=headlightsOn?3:0);
-    spotLights.forEach(s=>s.intensity=headlightsOn?3:0);
-    UIManager.toast(headlightsOn?'HEADLIGHTS ON':'HEADLIGHTS OFF');
-    AudioManager.playClick();
-  },
-  toggleDRL(){
-    drlOn=!drlOn;
-    drlMeshes.forEach(m=>m.material.emissiveIntensity=drlOn?2:0);
-    UIManager.toast(drlOn?'DRL ON':'DRL OFF');
-    AudioManager.playClick();
-  },
-  toggleBrakelights(){
-    brakelightsOn=!brakelightsOn;
-    taillightMeshes.forEach(m=>m.material.emissiveIntensity=brakelightsOn?4:0.4);
-    UIManager.toast(brakelightsOn?'BRAKE LIGHTS ON':'BRAKE LIGHTS OFF');
-    AudioManager.playClick();
-  },
-  toggleAmbient(){
-    ambientOn=!ambientOn;
-    envLights.forEach(l=>{
-      if(l.mat) l.mat.emissiveIntensity=ambientOn?2:0;
+  };
+  document.getElementById('screenshotBtn').onclick= ()=> {
+    renderer.domElement.toBlob(blob=> {
+      const url= URL.createObjectURL(blob);
+      const a= document.createElement('a');
+      a.href= url;
+      a.download='porsche_screenshot.png';
+      a.click();
     });
-    // ambient point light
-    if(ambientOn){
-      const apl=new THREE.PointLight(0x6600ff,0.5,3);
-      apl.position.set(0,0.5,0.5);
-      carGroup.add(apl);
-      pointLights.push(apl);
-    } else {
-      pointLights.forEach(l=>{ if(l.parent===carGroup) carGroup.remove(l); });
-    }
-    UIManager.toast(ambientOn?'AMBIENT ON':'AMBIENT OFF');
-    AudioManager.playClick();
-  },
-  setBrakes(hex,name,el){
-    document.querySelectorAll('#panel-brakes .cfg-option').forEach(s=>s.classList.remove('active'));
-    if(el) el.classList.add('active');
-    brakeCalipersAll.forEach(c=>c.material.color.setHex(hex));
-    UIManager.toast(name.toUpperCase()+' CALIPERS');
-    AudioManager.playClick();
-  }
-};
+  };
 
-// =====================================================================
-//  VR MANAGER
-// =====================================================================
-const VRManager = {
-  init(){
-    // Set up WebXR if available
-    if('xr' in navigator){
-      navigator.xr.isSessionSupported('immersive-vr').then(supported=>{
-        if(supported) renderer.xr.enabled=true;
-      });
+  // Side controls
+  document.getElementById('orbitBtn').onclick= ()=> {
+    controls.current='orbit';
+  };
+  document.getElementById('walkBtn').onclick= ()=> {
+    controls.current='walk';
+  };
+  document.getElementById('cockpitBtn').onclick= ()=> {
+    controls.current='cockpit';
+  };
+  document.getElementById('explodedBtn').onclick= ()=> {
+    toggleExploded();
+  };
+
+  // Configurator buttons
+  document.querySelectorAll('#configButtons button').forEach(btn => {
+    btn.onclick= ()=> {
+      const mode= btn.dataset.config;
+      openConfigurator(mode);
+    };
+  });
+
+  // Info panel close
+  infoClose.onclick= ()=> {
+    infoPanel.style.display='none';
+  };
+
+  // Mouse & touch events for interaction
+  let raycaster = new THREE.Raycaster();
+  let mouse = new THREE.Vector2();
+
+  renderer.domElement.addEventListener('click', (e)=> {
+    // convert mouse coords
+    mouse.x= (e.clientX / window.innerWidth)*2 -1;
+    mouse.y= - (e.clientY / window.innerHeight)*2 +1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects= raycaster.intersectObjects(Object.values(componentsMap).map(c=>c.mesh));
+    if (intersects.length>0) {
+      const obj=intersects[0].object;
+      showComponentInfo(obj);
     }
-  },
-  enter(){
-    const overlay=document.getElementById('vroverlay');
-    const msg=document.getElementById('vrMsg');
-    if(!('xr' in navigator)){
-      msg.textContent='WebXR is not supported in this browser. Try Chrome on Android with a compatible headset.';
-      overlay.classList.add('show');
-      return;
+  });
+  // For touch
+  renderer.domElement.addEventListener('touchstart', (e)=> {
+    const touch= e.touches[0];
+    mouse.x= (touch.clientX / window.innerWidth)*2 -1;
+    mouse.y= - (touch.clientY / window.innerHeight)*2 +1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects= raycaster.intersectObjects(Object.values(componentsMap).map(c=>c.mesh));
+    if (intersects.length>0) {
+      const obj=intersects[0].object;
+      showComponentInfo(obj);
     }
-    navigator.xr.isSessionSupported('immersive-vr').then(supported=>{
-      if(!supported){
-        msg.textContent='No VR headset detected. Connect a compatible headset and try again.';
-        overlay.classList.add('show');
-        return;
+  });
+
+  function showComponentInfo(obj) {
+    for(let key in componentsMap) {
+      if (componentsMap[key].mesh===obj) {
+        const data= componentsMap[key];
+        document.getElementById('infoTitle').textContent= data.name;
+        document.getElementById('infoText').innerHTML= `
+          <b>Function:</b> ${data.func}<br/>
+          <b>Material:</b> ${data.material}<br/>
+          <b>Notes:</b> ${data.info}
+        `;
+        infoPanel.style.display='flex';
+        break;
       }
-      navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor']}).then(session=>{
-        renderer.xr.setSession(session);
-        overlay.classList.remove('show');
-        UIManager.toast('VR ACTIVE');
-      }).catch(()=>{
-        msg.textContent='VR session could not be started. Ensure your headset is ready.';
-        overlay.classList.add('show');
-      });
-    });
+    }
   }
-};
 
-// =====================================================================
-//  BOOT
-// =====================================================================
-window.addEventListener('load',()=>{
-  // Unlock audio on first touch
-  document.addEventListener('touchstart',()=>AudioManager._ensureCtx(),{once:true});
-  document.addEventListener('click',()=>AudioManager._ensureCtx(),{once:true});
-  AppManager.init();
-});
+  // =================== ANIMATE ===================
+  function animate() {
+    requestAnimationFrame(animate);
+    const delta= clock.getDelta();
+
+    // FPS counter
+    fpsTime+=delta;
+    fpsAccum+=1;
+    if (fpsTime>fpsInterval) {
+      fpsCount= Math.round(fpsAccum/fpsTime);
+      document.getElementById('fpsCounter').textContent= 'FPS: '+fpsCount;
+      fpsTime=0;
+      fpsAccum=0;
+    }
+
+    // Controls update
+    if (controls.current==='orbit') {
+      controls.orbit.update();
+    } else if (controls.current==='walk') {
+      updateWalk(delta);
+    } else if (controls.current==='cockpit') {
+      // fixed inside
+      camera.position.set(0.5,1.4,0.8);
+      camera.lookAt(0.7,1.2,0);
+    }
+
+    // Exploded view
+    if (isExploded) {
+      explodedProgress+=delta*0.5;
+      if (explodedProgress>1) explodedProgress=1;
+      updateExploded(explodedProgress);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  // =================== WALK CONTROLS ===================
+  function updateWalk(delta) {
+    // For demo, simple WASD controls
+    if (keys['KeyW']) walkControls.moveForward=true; else walkControls.moveForward=false;
+    if (keys['KeyS']) walkControls.moveBackward=true; else walkControls.moveBackward=false;
+    if (keys['KeyA']) walkControls.moveLeft=true; else walkControls.moveLeft=false;
+    if (keys['KeyD']) walkControls.moveRight=true; else walkControls.moveRight=false;
+    // movement
+    walkControls.direction.set(0,0,0);
+    if (walkControls.moveForward) walkControls.direction.z-=1;
+    if (walkControls.moveBackward) walkControls.direction.z+=1;
+    if (walkControls.moveLeft) walkControls.direction.x-=1;
+    if (walkControls.moveRight) walkControls.direction.x+=1;
+    walkControls.direction.normalize();
+    // move camera
+    const moveSpeed= walkControls.enabled ? walkControls.speed : 0;
+    const dir= walkControls.direction.clone().applyEuler(new THREE.Euler(0,camera.rotation.y,0));
+    camera.position.add(dir.multiplyScalar(moveSpeed*delta));
+  }
+
+  const keys= {};
+  window.addEventListener('keydown', (e)=>{ keys[e.code]=true; });
+  window.addEventListener('keyup', (e)=>{ keys[e.code]=false; });
+
+  // =================== EXPLODED VIEW ===================
+  function toggleExploded() {
+    isExploded= !isExploded;
+    if (isExploded) {
+      // Save original positions
+      for(let key in componentsMap) {
+        explodedPositions[key]= componentsMap[key].mesh.position.clone();
+      }
+      // Animate outward
+      explodedProgress=0;
+    } else {
+      // reset
+      for(let key in componentsMap) {
+        componentsMap[key].mesh.position.copy(explodedPositions[key]);
+      }
+    }
+  }
+
+  function updateExploded(progress) {
+    for(let key in componentsMap) {
+      const mesh= componentsMap[key].mesh;
+      const originalPos= explodedPositions[key];
+      // For demo, move outward along local axis
+      const dir= originalPos.clone().normalize();
+      mesh.position.copy(originalPos.clone().add(dir.multiplyScalar(progress*0.5)));
+    }
+  }
+
+  // =================== OPEN/CLOSE DOORS ===================
+  function toggleDoor(doorName) {
+    const door= componentsMap[doorName];
+    if (!door) return;
+    const mesh= door.mesh;
+    const openAngle= Math.PI/3;
+    if (!mesh.userData.open) mesh.userData.open=0;
+    if (mesh.userData.open===0) {
+      // open
+      new TWEEN.Tween(mesh.rotation)
+        .to({ y: openAngle }, 1000)
+        .start();
+      mesh.userData.open=1;
+      if(sounds.doorClose) { sounds.doorClose.play(); }
+    } else {
+      // close
+      new TWEEN.Tween(mesh.rotation)
+        .to({ y:0 }, 1000)
+        .start();
+      mesh.userData.open=0;
+    }
+  }
+
+  // For demo, assign door toggle
+  // (In full app, buttons or hotspots)
+  window.toggleDoor = toggleDoor;
+
+  // =================== OPEN/CLOSE HOOD / TRUNK ===================
+  function toggleHood() {
+    // Animate hood up
+    const hood= componentsMap['Hood'].mesh;
+    if (!hood.userData.open) hood.userData.open=0;
+    if (hood.userData.open===0) {
+      new TWEEN.Tween(hood.position)
+        .to({ y: hood.position.y+0.3 }, 1000)
+        .start();
+      hood.userData.open=1;
+    } else {
+      new TWEEN.Tween(hood.position)
+        .to({ y: hood.position.y-0.3 }, 1000)
+        .start();
+      hood.userData.open=0;
+    }
+  }
+  window.toggleHood=toggleHood;
+
+  // =================== OPEN/CLOSE WINDOWS ===================
+  function toggleWindows() {
+    const win= componentsMap['Windows'].mesh;
+    if (!win.userData.open) win.userData.open=0;
+    if (win.userData.open===0) {
+      new TWEEN.Tween(win.scale)
+        .to({ y:0.1 }, 1000)
+        .start();
+      win.userData.open=1;
+    } else {
+      new TWEEN.Tween(win.scale)
+        .to({ y:1 }, 1000)
+        .start();
+      win.userData.open=0;
+    }
+  }
+  window.toggleWindows=toggleWindows;
+
+  // =================== OPEN/CLOSE LIGHTS ===================
+  function toggleHeadlights(on) {
+    if (on===undefined) on=true;
+    for(let key in componentsMap) {
+      if (key.startsWith('Headlight')) {
+        componentsMap[key].mesh.visible=on;
+      }
+    }
+  }
+  window.toggleHeadlights=toggleHeadlights;
+
+  // =================== SWITCH COLOR ===================
+  function setColor(colorHex) {
+    bodyMaterial.color.setHex(colorHex);
+  }
+  window.setColor=setColor;
+
+  // =================== SWITCH WHEELS ===================
+  function setWheels(type) {
+    // For demo, change wheel color
+    if (type==='sport') {
+      frontLeftWheel.material.color.setHex(0x222222);
+      frontRightWheel.material.color.setHex(0x222222);
+      rearLeftWheel.material.color.setHex(0x222222);
+      rearRightWheel.material.color.setHex(0x222222);
+    } else if (type==='luxury') {
+      frontLeftWheel.material.color.setHex(0xdddddd);
+      frontRightWheel.material.color.setHex(0xdddddd);
+      rearLeftWheel.material.color.setHex(0xdddddd);
+      rearRightWheel.material.color.setHex(0xdddddd);
+    } else {
+      frontLeftWheel.material.color.setHex(0x222222);
+      frontRightWheel.material.color.setHex(0x222222);
+      rearLeftWheel.material.color.setHex(0x222222);
+      rearRightWheel.material.color.setHex(0x222222);
+    }
+  }
+  window.setWheels=setWheels;
+
+  // =================== OPEN/CLOSE DOORS ===================
+  function openDoor(doorName) {
+    toggleDoor(doorName);
+  }
+
+  // =================== OPEN HOOD ===================
+  function openHood() {
+    toggleHood();
+  }
+
+  // =================== OPEN WINDOWS ===================
+  function openWindows() {
+    toggleWindows();
+  }
+
+  // =================== TOGGLE HEADLIGHTS ===================
+  function toggleLights() {
+    toggleHeadlights();
+  }
+
+  // =================== ANIMATION ===================
+  // Start main loop
+  function start() {
+    animate();
+  }
+
+  // =================== UI BUTTONS ===================
+  // For demo, assign some buttons
+  window.openDriverDoor= ()=> toggleDoor('Driver Door');
+  window.openPassengerDoor= ()=> toggleDoor('Passenger Door');
+  window.openHood= ()=> toggleHood();
+  window.openWindows= ()=> toggleWindows();
+  window.toggleHeadlights= ()=> toggleHeadlights();
+
+  // =================== RENDER & ANIMATE ===================
+  // Animate loop
+  function render() {
+    requestAnimationFrame(render);
+    TWEEN.update();
+
+    if (renderer.xr.isPresenting) {
+      // VR mode
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  // Start rendering
+  start();
+
+})();
 </script>
 </body>
 </html>
