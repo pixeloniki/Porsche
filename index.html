@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PORSCHE IMMERSIVE EXPERIENCE | 2026</title>
+    <meta name="description" content="Ultra-premium 3D Porsche Configurator and Experience">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/RGBELoader.js"></script>
+    
+    <style>
+        :root {
+            --porsche-red: #d5001c;
+            --glass: rgba(15, 15, 15, 0.85);
+            --gold: #c4a006;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: #050505;
+            color: #fff;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease;
+        }
+
+        .loader-logo {
+            font-size: 24px;
+            letter-spacing: 8px;
+            font-weight: 200;
+            margin-bottom: 20px;
+            opacity: 0;
+        }
+
+        .loader-bar-container {
+            width: 200px;
+            height: 2px;
+            background: #222;
+            position: relative;
+        }
+
+        #loader-bar {
+            position: absolute;
+            height: 100%;
+            background: var(--porsche-red);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .creator-tag {
+            position: absolute;
+            bottom: 30px;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #555;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            opacity: 0;
+            transition: opacity 1s ease 1s;
+        }
+
+        .top-bar {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+        }
+
+        .side-menu {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .bottom-panel {
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            pointer-events: auto;
+        }
+
+        /* Buttons & Components */
+        .btn-circle {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--glass);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-circle:active { transform: scale(0.9); background: var(--porsche-red); }
+
+        .config-row {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 10px 0;
+            scrollbar-width: none;
+        }
+
+        .config-row::-webkit-scrollbar { display: none; }
+
+        .swatch {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .swatch.active { border-color: #fff; }
+
+        .label-tag {
+            position: absolute;
+            background: var(--porsche-red);
+            padding: 4px 10px;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 2px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            display: none;
+        }
+
+        #info-panel {
+            position: absolute;
+            right: 20px;
+            top: 100px;
+            width: 260px;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            padding: 20px;
+            border-left: 3px solid var(--porsche-red);
+            display: none;
+            pointer-events: auto;
+        }
+
+        canvas { outline: none; }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="loader-logo" id="loader-text">PORSCHE</div>
+        <div class="loader-bar-container">
+            <div id="loader-bar"></div>
+        </div>
+        <div class="creator-tag">CREATED BY SALONICAS 2026</div>
+    </div>
+
+    <div id="ui-layer">
+        <div class="top-bar">
+            <div>
+                <h1 style="font-size: 14px; letter-spacing: 4px; font-weight: 300;">911 GT3 RS</h1>
+                <p style="font-size: 9px; color: #888;">IMMERSIVE DIGITAL TWIN</p>
+            </div>
+            <div style="display: flex; gap: 10px; pointer-events: auto;">
+                <div class="btn-circle" id="mute-btn">Vol</div>
+                <div class="btn-circle" id="vr-btn">VR</div>
+            </div>
+        </div>
+
+        <div class="side-menu">
+            <div class="btn-circle" title="Orbit View" onclick="app.setCamera('orbit')">O</div>
+            <div class="btn-circle" title="Interior" onclick="app.setCamera('interior')">I</div>
+            <div class="btn-circle" title="Exploded View" onclick="app.toggleExplode()">E</div>
+            <div class="btn-circle" title="Performance Mode" onclick="app.toggleDrive()">D</div>
+        </div>
+
+        <div id="info-panel">
+            <h2 id="part-name" style="font-size: 16px; margin-bottom: 5px;">COMPONENT</h2>
+            <p id="part-desc" style="font-size: 11px; color: #ccc; line-height: 1.4;"></p>
+        </div>
+
+        <div class="bottom-panel">
+            <div class="config-row" id="color-row">
+                <div class="swatch" style="background: #d5001c;" onclick="app.setPaint('#d5001c')"></div>
+                <div class="swatch" style="background: #000000;" onclick="app.setPaint('#050505')"></div>
+                <div class="swatch" style="background: #ffffff;" onclick="app.setPaint('#ffffff')"></div>
+                <div class="swatch" style="background: #8e8e8e;" onclick="app.setPaint('#4a4a4a')"></div>
+                <div class="swatch" style="background: #005f9e;" onclick="app.setPaint('#003366')"></div>
+                <div class="swatch" style="background: #f0c808;" onclick="app.setPaint('#c4a006')"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); pt: 10px;">
+                <span style="font-size: 10px; color: #666;">SWIPE TO CUSTOMIZE</span>
+                <span style="font-size: 10px; color: var(--porsche-red);" id="stats-fps">60 FPS</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * PORSCHE IMMERSIVE EXPERIENCE - CORE ENGINE
+         * Using Three.js for Rendering, GSAP for high-end cinematic motion.
+         */
+
+        class PorscheApp {
+            constructor() {
+                this.initScene();
+                this.initLights();
+                this.createCar();
+                this.initEvents();
+                this.animate();
+                
+                this.exploded = false;
+                this.driving = false;
+                this.isMuted = false;
+            }
+
+            initScene() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x020202);
+                this.scene.fog = new THREE.Fog(0x020202, 10, 50);
+
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(6, 2, 8);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.toneMapping = THREE.ReinhardToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                document.body.appendChild(this.renderer.domElement);
+
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.maxPolarAngle = Math.PI / 2 - 0.05;
+                this.controls.minDistance = 3.5;
+                this.controls.maxDistance = 12;
+            }
+
+            initLights() {
+                const ambient = new THREE.AmbientLight(0xffffff, 0.2);
+                this.scene.add(ambient);
+
+                const mainLight = new THREE.DirectionalLight(0xffffff, 2);
+                mainLight.position.set(5, 10, 5);
+                mainLight.castShadow = true;
+                mainLight.shadow.mapSize.set(1024, 1024);
+                this.scene.add(mainLight);
+
+                // Studio Ring Lights for Reflections
+                const light1 = new THREE.RectAreaLight(0xffffff, 5, 10, 1);
+                light1.position.set(0, 4, 0);
+                light1.lookAt(0,0,0);
+                this.scene.add(light1);
+            }
+
+            createCar() {
+                // Procedural Car Construction (Represented by high-quality geometry since we are single-file)
+                this.car = new THREE.Group();
+                
+                // Materials
+                this.mats = {
+                    body: new THREE.MeshPhysicalMaterial({ 
+                        color: 0xd5001c, metalness: 0.9, roughness: 0.05, 
+                        clearcoat: 1.0, clearcoatRoughness: 0.02,
+                        envMapIntensity: 1.5
+                    }),
+                    carbon: new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.5 }),
+                    glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, transmission: 0.9, roughness: 0 }),
+                    wheel: new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5, metalness: 0.8 }),
+                    tire: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }),
+                    caliper: new THREE.MeshStandardMaterial({ color: 0xf0c808, metalness: 0.8, roughness: 0.2 })
+                };
+
+                // Body Chassis (Simplified for logic, but visually complex via grouping)
+                const bodyGeom = new THREE.CapsuleGeometry(1, 4, 4, 32);
+                bodyGeom.rotateZ(Math.PI / 2);
+                this.chassis = new THREE.Mesh(bodyGeom, this.mats.body);
+                this.chassis.castShadow = true;
+                this.car.add(this.chassis);
+
+                // Adding Wheel Assemblies
+                this.wheels = [];
+                const wheelPos = [
+                    {x: 1.5, z: 1.2, y: -0.4}, {x: -1.5, z: 1.2, y: -0.4},
+                    {x: 1.5, z: -1.2, y: -0.4}, {x: -1.5, z: -1.2, y: -0.4}
+                ];
+
+                wheelPos.forEach(p => {
+                    const wGroup = new THREE.Group();
+                    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.3, 32), this.mats.wheel);
+                    w.rotateZ(Math.PI / 2);
+                    wGroup.add(w);
+                    wGroup.position.set(p.x, p.y, p.z);
+                    this.car.add(wGroup);
+                    this.wheels.push(wGroup);
+                });
+
+                // Spoilers / Aero
+                const wing = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 2.2), this.mats.carbon);
+                wing.position.set(-1.8, 0.8, 0);
+                this.car.add(wing);
+
+                this.scene.add(this.car);
+
+                // Ground Plane
+                const floor = new THREE.Mesh(
+                    new THREE.PlaneGeometry(100, 100),
+                    new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.5 })
+                );
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -0.85;
+                floor.receiveShadow = true;
+                this.scene.add(floor);
+            }
+
+            initEvents() {
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Loading Simulation
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    document.getElementById('loader-bar').style.width = Math.min(progress, 100) + '%';
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                        this.startExperience();
+                    }
+                }, 150);
+
+                // Interaction Raycaster
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+                window.addEventListener('click', (e) => this.onTap(e));
+            }
+
+            startExperience() {
+                gsap.to("#loading-screen", { opacity: 0, duration: 1.5, onComplete: () => {
+                    document.getElementById('loading-screen').style.display = 'none';
+                    document.getElementById('ui-layer').style.opacity = 1;
+                    this.playIntro();
+                }});
+                gsap.to("#loader-text", { opacity: 1, duration: 1 });
+            }
+
+            playIntro() {
+                this.controls.enabled = false;
+                gsap.from(this.camera.position, {
+                    x: 15, y: 5, z: 20,
+                    duration: 4,
+                    ease: "power2.inOut",
+                    onComplete: () => { this.controls.enabled = true; }
+                });
+            }
+
+            setPaint(hex) {
+                gsap.to(this.mats.body.color, {
+                    r: new THREE.Color(hex).r,
+                    g: new THREE.Color(hex).g,
+                    b: new THREE.Color(hex).b,
+                    duration: 0.8
+                });
+            }
+
+            toggleExplode() {
+                this.exploded = !this.exploded;
+                const target = this.exploded ? 1.5 : 0;
+                
+                this.car.children.forEach((child, i) => {
+                    if(child !== this.chassis) {
+                        gsap.to(child.position, {
+                            y: child.position.y + (this.exploded ? 1 : -1),
+                            duration: 1,
+                            ease: "expo.out"
+                        });
+                    }
+                });
+
+                this.showPartInfo(this.exploded ? "Exploded View" : "", this.exploded ? "Engineering mode active. Inspecting internal aerodynamics and suspension geometry." : "");
+            }
+
+            toggleDrive() {
+                this.driving = !this.driving;
+                if(this.driving) {
+                    this.showPartInfo("Track Mode", "Engine: Flat-6 Twin-Turbo. 518hp. Active aero engaged.");
+                }
+            }
+
+            setCamera(mode) {
+                if(mode === 'interior') {
+                    gsap.to(this.camera.position, { x: 0.5, y: 0.2, z: 0.2, duration: 1.5, ease: "power3.inOut" });
+                    this.controls.target.set(0.6, 0.2, 0);
+                } else {
+                    gsap.to(this.camera.position, { x: 6, y: 2, z: 8, duration: 1.5, ease: "power3.inOut" });
+                    this.controls.target.set(0, 0, 0);
+                }
+            }
+
+            showPartInfo(name, desc) {
+                const panel = document.getElementById('info-panel');
+                if(!name) { panel.style.display = 'none'; return; }
+                
+                panel.style.display = 'block';
+                document.getElementById('part-name').innerText = name;
+                document.getElementById('part-desc').innerText = desc;
+                gsap.fromTo(panel, { x: 50, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 });
+            }
+
+            onTap(e) {
+                this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                this.raycaster.setFromCamera(this.mouse, this.camera);
+                
+                const intersects = this.raycaster.intersectObjects(this.car.children, true);
+                if(intersects.length > 0) {
+                    // Simple logic for component detection
+                    this.showPartInfo("GT3 RS Aero-Blade", "Active carbon-fiber wing component that adjusts «180°C» to maximize downforce based on speed and yaw.");
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                
+                if(this.driving) {
+                    const time = Date.now() * 0.005;
+                    this.wheels.forEach(w => w.rotation.x += 0.2);
+                    this.car.position.y = Math.sin(time) * 0.02; // Vibration
+                }
+
+                this.renderer.render(this.scene, this.camera);
+                
+                // Stat simulation
+                if(Math.random() > 0.95) {
+                    document.getElementById('stats-fps').innerText = Math.floor(58 + Math.random() * 4) + " FPS";
+                }
+            }
+        }
+
+        // Initialize App
+        const app = new PorscheApp();
+
+        // Audio Handler
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        document.getElementById('mute-btn').addEventListener('click', () => {
+            app.isMuted = !app.isMuted;
+            document.getElementById('mute-btn').innerText = app.isMuted ? "Off" : "Vol";
+            // In a real app, logic for gainNode.gain.value would go here
+        });
+
+    </script>
+</body>
+</html>
